@@ -8,9 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/wsx864321/sweet_rpc/discov"
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 const KeyPrefix = "/sweet_rpc/service/register/"
@@ -21,7 +20,7 @@ type Register struct {
 	cli                 *clientv3.Client
 	serviceRegisterCh   chan *discov.Service
 	serviceUnRegisterCh chan *discov.Service
-	lock                sync.RWMutex
+	lock                sync.Mutex
 	downServices        atomic.Value
 	registerServices    map[string]*registerService
 }
@@ -41,8 +40,12 @@ func NewETCDRegister(opts ...Option) discov.Discovery {
 	}
 
 	return &Register{
-		Options:           opt,
-		serviceRegisterCh: make(chan *discov.Service),
+		Options:             opt,
+		serviceRegisterCh:   make(chan *discov.Service),
+		serviceUnRegisterCh: make(chan *discov.Service),
+		lock:                sync.Mutex{},
+		downServices:        atomic.Value{},
+		registerServices:    make(map[string]*registerService),
 	}
 }
 
@@ -58,6 +61,8 @@ func (r *Register) Init(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	go r.run()
 
 	return nil
 }
@@ -120,6 +125,7 @@ func (r *Register) registerService(ctx context.Context, service *registerService
 			r.logger.Errorf(ctx, "register service err,err:%v, register data:%v", err, string(raw))
 			continue
 		}
+
 		_, err = r.cli.Put(ctx, key, string(raw), clientv3.WithLease(leaseGrantResp.ID))
 		if err != nil {
 			r.logger.Errorf(ctx, "register service err,err:%v, register data:%v", err, string(raw))
@@ -189,7 +195,7 @@ func (r *Register) UnRegister(ctx context.Context, service *discov.Service) {
 }
 
 func (r *Register) GetService(ctx context.Context, name string) *discov.Service {
-	allServices := r.downServices.Load().(map[string]*discov.Service)
+	allServices := r.getDownServices()
 	if val, ok := allServices[name]; ok {
 		return val
 	}
@@ -218,24 +224,24 @@ func (r *Register) GetService(ctx context.Context, name string) *discov.Service 
 	r.downServices.Store(allServices)
 
 	go func() {
-		r.watch(ctx, key, getResp.Header.Revision+1)
+		r.watch(ctx, key, getResp.Header.Revision)
 	}()
 
 	return service
 }
 
 func (r *Register) watch(ctx context.Context, key string, leaseID int64) {
-	rch := r.cli.Watch(ctx, key, clientv3.WithLease(clientv3.LeaseID(leaseID)))
+	rch := r.cli.Watch(ctx, key, clientv3.WithLease(clientv3.LeaseID(leaseID)), clientv3.WithPrefix())
 	for n := range rch {
 		for _, ev := range n.Events {
 			switch ev.Type {
-			case mvccpb.PUT:
+			case clientv3.EventTypePut:
 				var service discov.Service
 				if err := json.Unmarshal(ev.Kv.Value, &service); err != nil {
 					continue
 				}
 				r.updateDownService(&service)
-			case mvccpb.DELETE:
+			case clientv3.EventTypeDelete:
 				var service discov.Service
 				if err := json.Unmarshal(ev.Kv.Value, &service); err != nil {
 					continue
@@ -293,6 +299,15 @@ func (r *Register) delDownService(service *discov.Service) {
 
 	downServices[service.Name].Endpoints = endpoints
 	r.downServices.Store(downServices)
+}
+
+func (r *Register) getDownServices() map[string]*discov.Service {
+	allServices := r.downServices.Load()
+	if allServices == nil {
+		return make(map[string]*discov.Service, 0)
+	}
+
+	return allServices.(map[string]*discov.Service)
 }
 
 func (r *Register) getEtcdRegisterKey(name, ip string, port int) string {
