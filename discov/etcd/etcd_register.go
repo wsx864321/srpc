@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -114,13 +116,9 @@ func (r *Register) registerService(ctx context.Context, service *registerService
 	service.leaseID = leaseGrantResp.ID
 
 	for _, endpoint := range service.service.Endpoints {
-		tmp := discov.Service{
-			Name:      service.service.Name,
-			Endpoints: []*discov.Endpoint{endpoint},
-		}
 
 		key := r.getEtcdRegisterKey(service.service.Name, endpoint.IP, endpoint.Port)
-		raw, err := json.Marshal(tmp)
+		raw, err := json.Marshal(endpoint)
 		if err != nil {
 			r.logger.Errorf(ctx, "register service err,err:%v, register data:%v", err, string(raw))
 			continue
@@ -223,38 +221,54 @@ func (r *Register) GetService(ctx context.Context, name string) *discov.Service 
 	allServices[name] = service
 	r.downServices.Store(allServices)
 
-	go func() {
-		r.watch(ctx, key, getResp.Header.Revision)
-	}()
+	go r.watch(ctx, key, getResp.Header.Revision+1)
 
 	return service
 }
 
-func (r *Register) watch(ctx context.Context, key string, leaseID int64) {
-	rch := r.cli.Watch(ctx, key, clientv3.WithLease(clientv3.LeaseID(leaseID)), clientv3.WithPrefix())
+func (r *Register) watch(ctx context.Context, key string, revision int64) {
+	rch := r.cli.Watch(ctx, key, clientv3.WithRev(revision), clientv3.WithPrefix())
 	for n := range rch {
 		for _, ev := range n.Events {
 			switch ev.Type {
 			case clientv3.EventTypePut:
-				var service discov.Service
-				if err := json.Unmarshal(ev.Kv.Value, &service); err != nil {
+				var endpoint discov.Endpoint
+				if err := json.Unmarshal(ev.Kv.Value, &endpoint); err != nil {
 					continue
 				}
-				r.updateDownService(&service)
+				serviceName, _, _ := r.getServiceNameByETCDKey(string(ev.Kv.Key))
+				r.updateDownService(&discov.Service{
+					serviceName,
+					[]*discov.Endpoint{&endpoint},
+				})
 			case clientv3.EventTypeDelete:
-				var service discov.Service
-				if err := json.Unmarshal(ev.Kv.Value, &service); err != nil {
+				var endpoint discov.Service
+				if err := json.Unmarshal(ev.Kv.Value, &endpoint); err != nil {
 					continue
 				}
-				r.delDownService(&service)
+				serviceName, ip, Port := r.getServiceNameByETCDKey(string(ev.Kv.Key))
+				r.delDownService(&discov.Service{
+					Name: serviceName,
+					Endpoints: []*discov.Endpoint{
+						{
+							IP:   ip,
+							Port: Port,
+						},
+					},
+				})
 			}
 		}
 	}
 }
 
 func (r *Register) updateDownService(service *discov.Service) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
 	downServices := r.downServices.Load().(map[string]*discov.Service)
 	if _, ok := downServices[service.Name]; !ok {
+		downServices[service.Name] = service
+		r.downServices.Store(downServices)
 		return
 	}
 
@@ -277,6 +291,9 @@ func (r *Register) updateDownService(service *discov.Service) {
 }
 
 func (r *Register) delDownService(service *discov.Service) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
 	downServices := r.downServices.Load().(map[string]*discov.Service)
 	if _, ok := downServices[service.Name]; !ok {
 		return
@@ -316,4 +333,12 @@ func (r *Register) getEtcdRegisterKey(name, ip string, port int) string {
 
 func (r *Register) getEtcdRegisterPrefixKey(name string) string {
 	return fmt.Sprintf(KeyPrefix+"%v", name)
+}
+
+func (r *Register) getServiceNameByETCDKey(key string) (string, string, int) {
+	trimStr := strings.TrimLeft(key, KeyPrefix)
+	strs := strings.Split(trimStr, "/")
+
+	ip, _ := strconv.Atoi(strs[2])
+	return strs[0], strs[1], ip
 }

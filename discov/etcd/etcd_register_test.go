@@ -2,7 +2,6 @@ package etcd
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -37,5 +36,6 @@ func TestRegister_Register(t *testing.T) {
 	register.Register(context.TODO(), service)
 	time.Sleep(2 * time.Second)
 	registerService := register.GetService(context.TODO(), "test")
-	fmt.Println(*registerService.Endpoints[0])
+
+	assert.Equal(t, *service.Endpoints[0], *registerService.Endpoints[0])
 }
