@@ -12,18 +12,6 @@ const (
 	fixedBytes       = 24
 )
 
-type Header struct {
-	MagicNum          uint8
-	Version           uint8 // version
-	MsgType           uint8 // msg type e.g. :   0x0: general req,  0x1: heartbeat
-	CompressType      uint8 // compression or not :  0x0: not compression,  0x1: compression
-	ServiceNameSize   uint16
-	ServiceMethodSize uint16
-	MateSize          uint32
-	DataSize          uint32
-	Seq               uint64 // stream ID
-}
-
 /**
 协议设计
 |MagicNum|Version|MsgType|CompressType|ServiceNameSize|ServiceMethodSize|MateSize|DataSize|Seq     |ServiceName|ServiceMethod|MetaData|Payload
@@ -38,6 +26,18 @@ type Message struct {
 	Payload       []byte
 }
 
+type Header struct {
+	MagicNum          uint8
+	Version           uint8 // version
+	MsgType           uint8 // msg type e.g. :   0x0: general req,  0x1: heartbeat
+	CompressType      uint8 // compression or not :  0x0: not compression,  0x1: compression
+	ServiceNameSize   uint16
+	ServiceMethodSize uint16
+	MetaSize          uint32
+	PayloadSize       uint32
+	Seq               uint64 // stream ID
+}
+
 type Codec struct {
 }
 
@@ -46,12 +46,8 @@ func NewCodec() *Codec {
 }
 
 // Encode ...
-func (c *Codec) Encode(msgType, compressType, uint8, seq uint64, serviceName, serviceMethod, metaData, payload []byte) ([]byte, error) {
+func (c *Codec) Encode(msgType, compressType uint8, seq uint64, serviceName, serviceMethod, metaData, payload []byte) ([]byte, error) {
 	buffer := bytes.NewBuffer(make([]byte, 0, fixedBytes+len(serviceName)+len(serviceMethod)+len(metaData)+len(payload)))
-	if err := binary.Write(buffer, binary.BigEndian, magicNum); err != nil {
-		return nil, err
-	}
-
 	if err := binary.Write(buffer, binary.BigEndian, magicNum); err != nil {
 		return nil, err
 	}
@@ -68,19 +64,19 @@ func (c *Codec) Encode(msgType, compressType, uint8, seq uint64, serviceName, se
 		return nil, err
 	}
 
-	if err := binary.Write(buffer, binary.BigEndian, len(serviceName)); err != nil {
+	if err := binary.Write(buffer, binary.BigEndian, uint16(len(serviceName))); err != nil {
 		return nil, err
 	}
 
-	if err := binary.Write(buffer, binary.BigEndian, len(serviceMethod)); err != nil {
+	if err := binary.Write(buffer, binary.BigEndian, uint16(len(serviceMethod))); err != nil {
 		return nil, err
 	}
 
-	if err := binary.Write(buffer, binary.BigEndian, len(metaData)); err != nil {
+	if err := binary.Write(buffer, binary.BigEndian, uint32(len(metaData))); err != nil {
 		return nil, err
 	}
 
-	if err := binary.Write(buffer, binary.BigEndian, len(payload)); err != nil {
+	if err := binary.Write(buffer, binary.BigEndian, uint32(len(payload))); err != nil {
 		return nil, err
 	}
 
@@ -88,19 +84,18 @@ func (c *Codec) Encode(msgType, compressType, uint8, seq uint64, serviceName, se
 		return nil, err
 	}
 
-	if err := binary.Write(buffer, binary.BigEndian, serviceName); err != nil {
+	if _, err := buffer.Write(serviceName); err != nil {
+		return nil, err
+	}
+	if _, err := buffer.Write(serviceMethod); err != nil {
 		return nil, err
 	}
 
-	if err := binary.Write(buffer, binary.BigEndian, serviceMethod); err != nil {
+	if _, err := buffer.Write(metaData); err != nil {
 		return nil, err
 	}
 
-	if err := binary.Write(buffer, binary.BigEndian, metaData); err != nil {
-		return nil, err
-	}
-
-	if err := binary.Write(buffer, binary.BigEndian, payload); err != nil {
+	if _, err := buffer.Write(payload); err != nil {
 		return nil, err
 	}
 
@@ -112,7 +107,27 @@ func (c *Codec) Decode(data []byte) (*Message, error) {
 		return nil, errors.New("data length is at least 23")
 	}
 
-	return nil, nil
+	var msg Message
+	header, err := c.decodeHeader(data[:fixedBytes])
+	if err != nil {
+		return nil, err
+	}
+
+	serviceNameStartPos := fixedBytes
+	msg.ServiceName = string(data[serviceNameStartPos : serviceNameStartPos+int(header.ServiceNameSize)])
+
+	serviceMethodStartPos := serviceNameStartPos + int(header.ServiceNameSize)
+	msg.ServiceMethod = string(data[serviceMethodStartPos : serviceMethodStartPos+int(header.ServiceMethodSize)])
+
+	metaDataStartPos := serviceMethodStartPos + int(header.ServiceMethodSize)
+	msg.MetaData = data[metaDataStartPos : metaDataStartPos+int(header.MetaSize)]
+
+	payloadStartPos := metaDataStartPos + int(header.MetaSize)
+	msg.Payload = data[payloadStartPos : payloadStartPos+int(header.PayloadSize)]
+
+	msg.Header = header
+
+	return &msg, nil
 }
 
 func (c *Codec) decodeHeader(data []byte) (*Header, error) {
@@ -133,7 +148,7 @@ func (c *Codec) decodeHeader(data []byte) (*Header, error) {
 		return nil, err
 	}
 
-	if magicNum != fixedBytes {
+	if magicNum != magicNum {
 		return nil, errors.New("invalid data")
 	}
 
