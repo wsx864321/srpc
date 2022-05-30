@@ -40,10 +40,10 @@ but，SweetRPC是一个学习RPC框架的好轮子，因为它足够简单，但
 - [ ] 漏斗
 - [ ] 令牌桶
 ### 负载均衡
-- [ ] rr
+- [X] rr
 - [ ] wrr
 - [ ] p2c
-- [ ] random
+- [X] random
 ### 重试
 - [ ] Failfast
 - [ ] Failover
