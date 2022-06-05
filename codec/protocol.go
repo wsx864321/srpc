@@ -13,9 +13,9 @@ const (
 )
 
 /**
-协议设计
+协议设计,TLV,|tag|length|value
 |MagicNum|Version|MsgType|CompressType|ServiceNameSize|ServiceMethodSize|MateSize|DataSize|Seq     |ServiceName|ServiceMethod|MetaData|Payload
-|1byte   |1byte  |1byte  |1byte       |2byte          |2byte            |4byte   |4byte   |8byte   |
+|1byte   |1byte  |1byte  |1byte       |2byte          |2byte            |4byte   |4byte   |8byte   |x bytes    |x bytes      |x bytes |x bytes
 */
 
 type Message struct {
@@ -26,6 +26,7 @@ type Message struct {
 	Payload       []byte
 }
 
+// Header 设计上考虑了内存对齐
 type Header struct {
 	MagicNum          uint8
 	Version           uint8 // version
