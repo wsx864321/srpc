@@ -24,10 +24,12 @@ but，SweetRPC是一个学习RPC框架的好轮子，因为它足够简单，但
 - [ ] http2
 - [ ] tcp
 - [ ] quic
-## 数据编解码（json、pb、msgpack）
+## 数据序列化（json、pb、msgpack）
 - [ ] json
 - [ ] pb
 - [ ] msgpack
+## 数据压缩
+
 ## 服务治理
 ### 数据可观测性（logging、metric、trace）
 - [X] logging
