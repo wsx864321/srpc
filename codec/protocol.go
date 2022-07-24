@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	magicNum   uint8 = 0x11
-	version    uint8 = 0x1
-	fixedBytes       = 24
+	magicNumConst   uint8 = 0x11
+	versionConst    uint8 = 0x1
+	fixedBytesConst       = 24
 )
 
 /**
@@ -48,12 +48,12 @@ func NewCodec() *Codec {
 
 // Encode ...
 func (c *Codec) Encode(msgType, compressType uint8, seq uint64, serviceName, serviceMethod, metaData, payload []byte) ([]byte, error) {
-	buffer := bytes.NewBuffer(make([]byte, 0, fixedBytes+len(serviceName)+len(serviceMethod)+len(metaData)+len(payload)))
-	if err := binary.Write(buffer, binary.BigEndian, magicNum); err != nil {
+	buffer := bytes.NewBuffer(make([]byte, 0, fixedBytesConst+len(serviceName)+len(serviceMethod)+len(metaData)+len(payload)))
+	if err := binary.Write(buffer, binary.BigEndian, magicNumConst); err != nil {
 		return nil, err
 	}
 
-	if err := binary.Write(buffer, binary.BigEndian, version); err != nil {
+	if err := binary.Write(buffer, binary.BigEndian, versionConst); err != nil {
 		return nil, err
 	}
 
@@ -104,17 +104,17 @@ func (c *Codec) Encode(msgType, compressType uint8, seq uint64, serviceName, ser
 }
 
 func (c *Codec) Decode(data []byte) (*Message, error) {
-	if len(data) < fixedBytes {
+	if len(data) < fixedBytesConst {
 		return nil, errors.New("data length is at least 23")
 	}
 
 	var msg Message
-	header, err := c.decodeHeader(data[:fixedBytes])
+	header, err := c.decodeHeader(data[:fixedBytesConst])
 	if err != nil {
 		return nil, err
 	}
 
-	serviceNameStartPos := fixedBytes
+	serviceNameStartPos := fixedBytesConst
 	msg.ServiceName = string(data[serviceNameStartPos : serviceNameStartPos+int(header.ServiceNameSize)])
 
 	serviceMethodStartPos := serviceNameStartPos + int(header.ServiceNameSize)
