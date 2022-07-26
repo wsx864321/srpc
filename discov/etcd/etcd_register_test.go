@@ -24,12 +24,11 @@ func TestRegister_Register(t *testing.T) {
 	service := &discov.Service{
 		Name: "test",
 		Endpoints: []*discov.Endpoint{
-			&discov.Endpoint{
-				ServerName: "test",
-				IP:         "127.0.0.1",
-				Port:       9557,
-				Protocol:   1,
-				Enable:     true,
+			{
+				ServiceName: "test",
+				IP:          "127.0.0.1",
+				Port:        9557,
+				Enable:      true,
 			},
 		},
 	}

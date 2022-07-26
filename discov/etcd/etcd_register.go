@@ -238,8 +238,8 @@ func (r *Register) watch(ctx context.Context, key string, revision int64) {
 				}
 				serviceName, _, _ := r.getServiceNameByETCDKey(string(ev.Kv.Key))
 				r.updateDownService(&discov.Service{
-					serviceName,
-					[]*discov.Endpoint{&endpoint},
+					Name:      serviceName,
+					Endpoints: []*discov.Endpoint{&endpoint},
 				})
 			case clientv3.EventTypeDelete:
 				var endpoint discov.Service

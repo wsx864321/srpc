@@ -18,6 +18,7 @@ const (
 |1byte   |1byte  |1byte  |1byte       |2byte          |2byte            |4byte   |4byte   |8byte   |x bytes    |x bytes      |x bytes |x bytes
 */
 
+// todo 修改成rpc调用四元素 caller callerFunc callee callFunc
 type Message struct {
 	*Header
 	ServiceName   string

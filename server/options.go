@@ -3,35 +3,49 @@ package server
 import (
 	"time"
 
+	"github.com/wsx864321/sweet_rpc/discov/etcd"
+
+	"github.com/wsx864321/sweet_rpc/discov"
+
 	"github.com/wsx864321/sweet_rpc/codec/serialize"
 	"github.com/wsx864321/sweet_rpc/transport"
 )
 
 var defaultOptions = &Options{
-	Addr:         "0.0.0.0:9577",
+	IP:           "0.0.0.0",
+	Port:         9557,
 	Protocol:     transport.ProtocolTCP,
 	Serialize:    serialize.SerializeTypeJson,
 	ReadTimeout:  20 * time.Second,
 	WriteTimeout: 20 * time.Second,
+	Discovery:    etcd.NewETCDRegister(),
 }
 
 type Options struct {
-	Addr         string
-	Protocol     transport.Protocol
+	IP           string
+	Port         int
+	Protocol     transport.Transport
 	Serialize    serialize.SerializeType
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
+	Discovery    discov.Discovery
 }
 
 type Option func(opt *Options)
 
-func WithAddr(addr string) Option {
+func WithIP(ip string) Option {
 	return func(opt *Options) {
-		opt.Addr = addr
+		opt.IP = ip
 	}
 }
 
-func WithProtocol(protocol transport.Protocol) Option {
+func WithPort(port int) Option {
+	return func(opt *Options) {
+		opt.Port = port
+	}
+}
+
+func WithProtocol(protocol transport.Transport) Option {
 	return func(opt *Options) {
 		opt.Protocol = protocol
 	}
@@ -52,6 +66,12 @@ func WithReadTimeout(duration time.Duration) Option {
 func WithWriteTimeout(duration time.Duration) Option {
 	return func(opt *Options) {
 		opt.WriteTimeout = duration
+	}
+}
+
+func WithDiscovery(discovery discov.Discovery) Option {
+	return func(opt *Options) {
+		opt.Discovery = discovery
 	}
 }
 

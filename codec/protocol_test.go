@@ -22,7 +22,7 @@ func TestCodec_decodeHeader(t *testing.T) {
 	c := NewCodec()
 	req, _ := c.Encode(1, 1, 11111, []byte("testService"), []byte("index"), []byte("matedata"), []byte("payload"))
 
-	resp, err := c.decodeHeader(req[:fixedBytes])
+	resp, err := c.decodeHeader(req[:fixedBytesConst])
 
 	assert.NoError(t, err)
 
