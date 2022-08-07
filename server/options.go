@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/wsx864321/sweet_rpc/logger"
 	"time"
 
 	"github.com/wsx864321/sweet_rpc/discov/etcd"
@@ -29,6 +30,7 @@ type Options struct {
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	Discovery    discov.Discovery
+	Logger       logger.Log
 }
 
 type Option func(opt *Options)
@@ -72,6 +74,12 @@ func WithWriteTimeout(duration time.Duration) Option {
 func WithDiscovery(discovery discov.Discovery) Option {
 	return func(opt *Options) {
 		opt.Discovery = discovery
+	}
+}
+
+func WithLogger(log logger.Log) Option {
+	return func(opt *Options) {
+		opt.Logger = log
 	}
 }
 
