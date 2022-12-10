@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	magicNumConst   uint8 = 0x11
-	versionConst    uint8 = 0x1
-	fixedBytesConst       = 24
+	magicNumConst    uint8 = 0x11
+	versionConst     uint8 = 0x1
+	headerByteLength       = 24
 )
 
 /**
@@ -18,7 +18,7 @@ const (
 |1byte   |1byte  |1byte  |1byte       |2byte          |2byte            |4byte   |4byte   |8byte   |x bytes    |x bytes      |x bytes |x bytes
 */
 
-// todo 修改成rpc调用四元素 caller callerFunc callee callFunc
+// Message todo 修改成rpc调用四元素 caller callerFunc callee callFunc
 type Message struct {
 	*Header
 	ServiceName   string
@@ -49,7 +49,7 @@ func NewCodec() *Codec {
 
 // Encode ...
 func (c *Codec) Encode(msgType, compressType uint8, seq uint64, serviceName, serviceMethod, metaData, payload []byte) ([]byte, error) {
-	buffer := bytes.NewBuffer(make([]byte, 0, fixedBytesConst+len(serviceName)+len(serviceMethod)+len(metaData)+len(payload)))
+	buffer := bytes.NewBuffer(make([]byte, 0, headerByteLength+len(serviceName)+len(serviceMethod)+len(metaData)+len(payload)))
 	if err := binary.Write(buffer, binary.BigEndian, magicNumConst); err != nil {
 		return nil, err
 	}
@@ -105,17 +105,17 @@ func (c *Codec) Encode(msgType, compressType uint8, seq uint64, serviceName, ser
 }
 
 func (c *Codec) Decode(data []byte) (*Message, error) {
-	if len(data) < fixedBytesConst {
+	if len(data) < headerByteLength {
 		return nil, errors.New("data length is at least 23")
 	}
 
 	var msg Message
-	header, err := c.decodeHeader(data[:fixedBytesConst])
+	header, err := c.DecodeHeader(data[:headerByteLength])
 	if err != nil {
 		return nil, err
 	}
 
-	serviceNameStartPos := fixedBytesConst
+	serviceNameStartPos := headerByteLength
 	msg.ServiceName = string(data[serviceNameStartPos : serviceNameStartPos+int(header.ServiceNameSize)])
 
 	serviceMethodStartPos := serviceNameStartPos + int(header.ServiceNameSize)
@@ -132,7 +132,26 @@ func (c *Codec) Decode(data []byte) (*Message, error) {
 	return &msg, nil
 }
 
-func (c *Codec) decodeHeader(data []byte) (*Header, error) {
+func (c *Codec) DecodeBody(header *Header, data []byte) (*Message, error) {
+	var msg Message
+	serviceNameStartPos := headerByteLength
+	msg.ServiceName = string(data[serviceNameStartPos : serviceNameStartPos+int(header.ServiceNameSize)])
+
+	serviceMethodStartPos := serviceNameStartPos + int(header.ServiceNameSize)
+	msg.ServiceMethod = string(data[serviceMethodStartPos : serviceMethodStartPos+int(header.ServiceMethodSize)])
+
+	metaDataStartPos := serviceMethodStartPos + int(header.ServiceMethodSize)
+	msg.MetaData = data[metaDataStartPos : metaDataStartPos+int(header.MetaSize)]
+
+	payloadStartPos := metaDataStartPos + int(header.MetaSize)
+	msg.Payload = data[payloadStartPos : payloadStartPos+int(header.PayloadSize)]
+
+	msg.Header = header
+
+	return &msg, nil
+}
+
+func (c *Codec) DecodeHeader(data []byte) (*Header, error) {
 	var (
 		magicNum          uint8
 		version           uint8
@@ -197,4 +216,12 @@ func (c *Codec) decodeHeader(data []byte) (*Header, error) {
 		dataSize,
 		seq,
 	}, nil
+}
+
+func (c *Codec) GetHeaderLength() int {
+	return headerByteLength
+}
+
+func (c *Codec) GetBodyLength(header *Header) int {
+	return headerByteLength + int(header.ServiceNameSize) + int(header.ServiceMethodSize) + int(header.MetaSize) + int(header.PayloadSize)
 }
