@@ -1,15 +1,15 @@
 package server
 
 import (
-	"github.com/wsx864321/sweet_rpc/logger"
+	"github.com/wsx864321/srpc/logger"
 	"time"
 
-	"github.com/wsx864321/sweet_rpc/discov/etcd"
+	"github.com/wsx864321/srpc/discov/etcd"
 
-	"github.com/wsx864321/sweet_rpc/discov"
+	"github.com/wsx864321/srpc/discov"
 
-	"github.com/wsx864321/sweet_rpc/codec/serialize"
-	"github.com/wsx864321/sweet_rpc/transport"
+	"github.com/wsx864321/srpc/codec/serialize"
+	"github.com/wsx864321/srpc/transport"
 )
 
 var defaultOptions = &Options{

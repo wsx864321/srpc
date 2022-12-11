@@ -3,9 +3,9 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/wsx864321/sweet_rpc/codec"
-	"github.com/wsx864321/sweet_rpc/codec/serialize"
-	"github.com/wsx864321/sweet_rpc/transport"
+	"github.com/wsx864321/srpc/codec"
+	"github.com/wsx864321/srpc/codec/serialize"
+	"github.com/wsx864321/srpc/transport"
 	"net"
 	"os"
 	"os/signal"
@@ -14,9 +14,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/wsx864321/sweet_rpc/discov"
+	"github.com/wsx864321/srpc/discov"
 
-	"github.com/wsx864321/sweet_rpc/interceptor"
+	"github.com/wsx864321/srpc/interceptor"
 )
 
 type handler func(ctx context.Context, body []byte) (interface{}, error)

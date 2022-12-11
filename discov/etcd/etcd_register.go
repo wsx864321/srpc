@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/wsx864321/sweet_rpc/discov"
+	"github.com/wsx864321/srpc/discov"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 

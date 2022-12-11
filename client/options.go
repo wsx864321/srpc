@@ -1,8 +1,8 @@
 package client
 
 import (
-	"github.com/wsx864321/sweet_rpc/interceptor"
-	"github.com/wsx864321/sweet_rpc/lb"
+	"github.com/wsx864321/srpc/interceptor"
+	"github.com/wsx864321/srpc/lb"
 	"time"
 )
 

@@ -3,7 +3,7 @@ package etcd
 import (
 	"time"
 
-	"github.com/wsx864321/sweet_rpc/logger"
+	"github.com/wsx864321/srpc/logger"
 )
 
 var (
@@ -12,7 +12,7 @@ var (
 		dialTimeout:            10 * time.Second,
 		syncFlushCacheInterval: 10 * time.Second,
 		keepAliveInterval:      10,
-		logger: logger.NewSweetLog(),
+		logger:                 logger.NewSweetLog(),
 	}
 )
 

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wsx864321/sweet_rpc/discov"
+	"github.com/wsx864321/srpc/discov"
 
 	"github.com/stretchr/testify/assert"
 )

@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/wsx864321/sweet_rpc/discov/etcd"
+	"github.com/wsx864321/srpc/discov/etcd"
 	"testing"
 )
 

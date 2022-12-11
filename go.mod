@@ -1,4 +1,4 @@
-module github.com/wsx864321/sweet_rpc
+module github.com/wsx864321/srpc
 
 go 1.16
 

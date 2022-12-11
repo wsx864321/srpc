@@ -1,6 +1,6 @@
 package lb
 
-import "github.com/wsx864321/sweet_rpc/discov"
+import "github.com/wsx864321/srpc/discov"
 
 type LoadBalanceType uint8
 

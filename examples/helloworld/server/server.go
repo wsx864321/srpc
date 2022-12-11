@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/wsx864321/sweet_rpc/discov/etcd"
-	"github.com/wsx864321/sweet_rpc/server"
+	"github.com/wsx864321/srpc/discov/etcd"
+	"github.com/wsx864321/srpc/server"
 )
 
 func main() {
