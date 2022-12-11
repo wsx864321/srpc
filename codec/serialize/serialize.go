@@ -5,11 +5,13 @@ type SerializeType string
 const (
 	SerializeTypeJson    SerializeType = "json"
 	SerializeTypeMsgpack               = "msgpack"
+	SerializeTypeProto                 = "proto"
 )
 
 var serializeMgr = map[SerializeType]Serialize{
 	SerializeTypeJson:    &JsonSerialize{},
 	SerializeTypeMsgpack: &MsgpackSerialize{},
+	SerializeTypeProto:   &ProtoSerialize{},
 }
 
 type Serialize interface {

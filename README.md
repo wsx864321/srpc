@@ -26,7 +26,7 @@ but，SweetRPC是一个学习RPC框架的好轮子，因为它足够简单，麻
 - [ ] quic
 ## 数据序列化（json、pb、msgpack）
 - [X] json
-- [ ] pb
+- [X] pb
 - [X] msgpack
 ## 数据压缩
 
