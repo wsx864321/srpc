@@ -20,6 +20,7 @@ var defaultOptions = &Options{
 	ReadTimeout:  20 * time.Second,
 	WriteTimeout: 20 * time.Second,
 	Discovery:    etcd.NewETCDRegister(),
+	Logger:       logger.NewSweetLog(),
 }
 
 type Options struct {

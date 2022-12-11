@@ -7,7 +7,11 @@ import (
 	"github.com/wsx864321/sweet_rpc/codec/serialize"
 	"github.com/wsx864321/sweet_rpc/transport"
 	"net"
+	"os"
+	"os/signal"
 	"reflect"
+	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/wsx864321/sweet_rpc/discov"
@@ -19,7 +23,7 @@ type handler func(ctx context.Context, body []byte) (interface{}, error)
 
 type Server interface {
 	Start()
-	Close()
+	Stop()
 	RegisterService(serName string, service interface{})
 	RegisterMiddleware(interceptors ...interceptor.ServerInterceptor)
 }
@@ -101,6 +105,19 @@ func (s *server) RegisterService(serName string, srv interface{}) {
 		serName,
 		methods,
 	}
+
+	// 服务注册
+	s.opts.Discovery.Register(context.TODO(), &discov.Service{
+		Name: serName,
+		Endpoints: []*discov.Endpoint{
+			{
+				ServiceName: serName,
+				IP:          s.opts.IP,
+				Port:        s.opts.Port,
+				Enable:      true,
+			},
+		},
+	})
 }
 
 func (s *server) checkMethod(methodType reflect.Type) error {
@@ -142,9 +159,14 @@ func (s *server) Start() {
 		panic(err)
 	}
 
+	s.opts.Logger.Infof(context.TODO(), "server start at %s", fmt.Sprintf("%v:%v", s.opts.IP, s.opts.Port))
+
+	// accept请求
+	go s.run(ln)
+
 	// 注册服务
 	for name, _ := range s.serviceMap {
-		service := &discov.Service{
+		s.opts.Discovery.Register(context.TODO(), &discov.Service{
 			Name: name,
 			Endpoints: []*discov.Endpoint{
 				{
@@ -154,18 +176,53 @@ func (s *server) Start() {
 					Enable:      true,
 				},
 			},
-		}
-		s.opts.Discovery.Register(context.TODO(), service)
+		})
 	}
 
-	go s.run(ln)
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
+	for {
+		sig := <-c
+		switch sig {
+		case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
+			s.Stop()
+			time.Sleep(time.Second)
+			return
+		case syscall.SIGHUP:
+		default:
+			return
+		}
+	}
 }
 
-func (s *server) Close() {
+func (s *server) Stop() {
+	// 服务取消注册
+	for name, _ := range s.serviceMap {
+		s.opts.Discovery.UnRegister(context.TODO(), &discov.Service{
+			Name: name,
+			Endpoints: []*discov.Endpoint{
+				{
+					ServiceName: name,
+					IP:          s.opts.IP,
+					Port:        s.opts.Port,
+					Enable:      true,
+				},
+			},
+		})
+	}
+
 	s.cancel()
 }
 
 func (s *server) run(ln net.Listener) {
+	defer func() {
+		if r := recover(); r != nil {
+			stack := make([]byte, 4096)
+			stack = stack[:runtime.Stack(stack, false)]
+			s.opts.Logger.Errorf(context.TODO(), "err:%v\n.stack:%v", r, string(stack))
+		}
+	}()
+
 	for {
 		select {
 		case <-s.ctx.Done():
@@ -176,7 +233,8 @@ func (s *server) run(ln net.Listener) {
 				s.opts.Logger.Errorf(s.ctx, "err:%v", err)
 				continue
 			}
-			// 开启一个协程进行rpc
+
+			// 开启一个协程处理请求
 			go s.process(accept)
 		}
 
@@ -186,6 +244,14 @@ func (s *server) run(ln net.Listener) {
 
 // process logic
 func (s *server) process(conn net.Conn) {
+	defer func() {
+		if r := recover(); r != nil {
+			stack := make([]byte, 4096)
+			stack = stack[:runtime.Stack(stack, false)]
+			s.opts.Logger.Errorf(context.TODO(), "err:%v\n.stack:%v", r, string(stack))
+		}
+	}()
+
 	//1.提取数据
 	msg, err := s.extractMessage(conn)
 	if err != nil {
@@ -205,7 +271,24 @@ func (s *server) process(conn net.Conn) {
 	}
 
 	// 3.执行具体方法（包括注册的中间件）
-	methodHandler(context.TODO(), msg.Payload)
+	resp, err := methodHandler(context.TODO(), msg.Payload)
+
+	// 4.对client发送返回数据
+	var response codec.Response
+	if err != nil {
+		response.Msg = err.Error()
+		response.Code = -1
+	} else {
+		response.Msg = ""
+		response.Code = 0
+	}
+	response.Data = resp
+	raw, _ := serialize.GetSerialize(s.opts.Serialize).Marshal(&response)
+	if _, err = conn.Write(raw); err != nil {
+		//s.opts.Logger.Errorf(context.TODO(), "extractMessage error:%v", err.Error())
+	}
+
+	return
 }
 
 // extractMessage 提取message内容

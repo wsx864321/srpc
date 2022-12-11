@@ -225,3 +225,9 @@ func (c *Codec) GetHeaderLength() int {
 func (c *Codec) GetBodyLength(header *Header) int {
 	return headerByteLength + int(header.ServiceNameSize) + int(header.ServiceMethodSize) + int(header.MetaSize) + int(header.PayloadSize)
 }
+
+type Response struct {
+	Code int32       `json:"code"`
+	Msg  string      `json:"msg"`
+	Data interface{} `json:"data"`
+}
