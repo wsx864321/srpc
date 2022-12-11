@@ -5,6 +5,10 @@ import "github.com/vmihailenco/msgpack"
 type MsgpackSerialize struct {
 }
 
+func NewMsgpackSerialize() Serialize {
+	return &MsgpackSerialize{}
+}
+
 func (m *MsgpackSerialize) Marshal(v interface{}) ([]byte, error) {
 	return msgpack.Marshal(v)
 }

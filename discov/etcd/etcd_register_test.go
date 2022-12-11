@@ -11,15 +11,11 @@ import (
 )
 
 func TestNewETCDRegister(t *testing.T) {
-	register := NewETCDRegister()
-	err := register.Init(context.TODO())
-
-	assert.Nil(t, err)
+	NewETCDRegister()
 }
 
 func TestRegister_Register(t *testing.T) {
 	register := NewETCDRegister(WithEndpoints([]string{"127.0.0.1:2371"}))
-	register.Init(context.TODO())
 
 	service := &discov.Service{
 		Name: "test",

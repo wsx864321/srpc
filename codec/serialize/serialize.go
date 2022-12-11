@@ -9,9 +9,9 @@ const (
 )
 
 var serializeMgr = map[SerializeType]Serialize{
-	SerializeTypeJson:    &JsonSerialize{},
-	SerializeTypeMsgpack: &MsgpackSerialize{},
-	SerializeTypeProto:   &ProtoSerialize{},
+	SerializeTypeJson:    NewJsonSerialize(),
+	SerializeTypeMsgpack: NewMsgpackSerialize(),
+	SerializeTypeProto:   NewProtoSerialize(),
 }
 
 type Serialize interface {
@@ -19,7 +19,7 @@ type Serialize interface {
 	Unmarshal(data []byte, v interface{}) error
 }
 
-// RegisterSerialize 注册序列化方式
+// RegisterSerialize 注册序列化方式,可以自定义序列化方式
 func RegisterSerialize(serializeType SerializeType, serialize Serialize) {
 	serializeMgr[serializeType] = serialize
 }

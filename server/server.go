@@ -30,7 +30,7 @@ type Server interface {
 
 type server struct {
 	opts         *Options
-	codec        codec.Codec
+	codec        *codec.Codec
 	ctx          context.Context    // Each service is managed in one context
 	cancel       context.CancelFunc // controller of context
 	interceptors []interceptor.ServerInterceptor
@@ -48,9 +48,11 @@ func NewServer(opts ...Option) *server {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &server{
 		opts:         NewOptions(opts...),
+		codec:        codec.NewCodec(),
 		ctx:          ctx,
 		cancel:       cancel,
 		interceptors: make([]interceptor.ServerInterceptor, 0),
+		serviceMap:   make(map[string]*service),
 		transportMgr: transport.NewServerTransportMgr(),
 	}
 }
@@ -68,7 +70,7 @@ func (s *server) RegisterService(serName string, srv interface{}) {
 	methods := make(map[string]handler)
 	for i := 0; i < svrType.NumMethod(); i++ {
 		method := svrType.Method(i)
-		if err := s.checkMethod(method.Type); err != nil {
+		if err := s.checkMethod(method.Name, method.Type); err != nil {
 			panic(err)
 		}
 
@@ -120,34 +122,35 @@ func (s *server) RegisterService(serName string, srv interface{}) {
 	})
 }
 
-func (s *server) checkMethod(methodType reflect.Type) error {
+func (s *server) checkMethod(methodName string, methodType reflect.Type) error {
 	if methodType.NumIn() != 3 {
-		return fmt.Errorf("method %s invalid, the number of params != 2", methodType.Name())
+		return fmt.Errorf("method %s invalid, the number of params != 2", methodName)
 	}
 
 	if methodType.NumOut() != 2 {
-		return fmt.Errorf("method %s invalid, the number of params != 2", methodType.Name())
+		return fmt.Errorf("method %s invalid, the number of params != 2", methodName)
 	}
 
 	var ctx *context.Context
 	if !methodType.In(1).Implements(reflect.TypeOf(ctx).Elem()) {
-		return fmt.Errorf("method %s invalid, first param is not context", methodType.Name())
+		return fmt.Errorf("method %s invalid, first param is not context", methodName)
 	}
 
 	if methodType.In(2).Kind() != reflect.Ptr {
-		return fmt.Errorf("method %s invalid, second param is not ptr", methodType.Name())
+		return fmt.Errorf("method %s invalid, second param is not ptr", methodName)
 	}
 
 	if methodType.Out(0).Kind() != reflect.Ptr {
-		return fmt.Errorf("method %s invalid, first reply type is not a pointer", methodType.Name())
+		return fmt.Errorf("method %s invalid, first reply type is not a pointer", methodName)
 	}
 
 	var err *error
-	if methodType.Out(1).Implements(reflect.TypeOf(err).Elem()) {
-		return fmt.Errorf("method %s invalid, second reply is not error", methodType.Name())
+	if !methodType.Out(1).Implements(reflect.TypeOf(err).Elem()) {
+		return fmt.Errorf("method %s invalid, second reply type is not error", methodName)
 	}
 
 	return nil
+
 }
 
 // Start 启动server

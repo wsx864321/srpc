@@ -5,6 +5,10 @@ import "encoding/json"
 type JsonSerialize struct {
 }
 
+func NewJsonSerialize() Serialize {
+	return &JsonSerialize{}
+}
+
 func (j *JsonSerialize) Marshal(v interface{}) ([]byte, error) {
 	return json.Marshal(v)
 }

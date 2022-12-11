@@ -41,7 +41,7 @@ func NewETCDRegister(opts ...Option) discov.Discovery {
 		o(&opt)
 	}
 
-	return &Register{
+	r := &Register{
 		Options:             opt,
 		serviceRegisterCh:   make(chan *discov.Service),
 		serviceUnRegisterCh: make(chan *discov.Service),
@@ -49,10 +49,16 @@ func NewETCDRegister(opts ...Option) discov.Discovery {
 		downServices:        atomic.Value{},
 		registerServices:    make(map[string]*registerService),
 	}
+
+	if err := r.init(context.TODO()); err != nil {
+		panic(err)
+	}
+
+	return r
 }
 
-// Init 初始化
-func (r *Register) Init(ctx context.Context) error {
+// init 初始化
+func (r *Register) init(ctx context.Context) error {
 	var err error
 	r.cli, err = clientv3.New(
 		clientv3.Config{
