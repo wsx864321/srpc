@@ -105,19 +105,6 @@ func (s *server) RegisterService(serName string, srv interface{}) {
 		serName,
 		methods,
 	}
-
-	// 服务注册
-	s.opts.Discovery.Register(context.TODO(), &discov.Service{
-		Name: serName,
-		Endpoints: []*discov.Endpoint{
-			{
-				ServiceName: serName,
-				IP:          s.opts.IP,
-				Port:        s.opts.Port,
-				Enable:      true,
-			},
-		},
-	})
 }
 
 func (s *server) checkMethod(methodName string, methodType reflect.Type) error {

@@ -14,7 +14,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-const KeyPrefix = "/sweet_rpc/service/register/"
+const KeyPrefix = "/srpc/service/register/"
 
 // Register ...
 type Register struct {
@@ -79,7 +79,6 @@ func (r *Register) run() {
 	for {
 		select {
 		case service := <-r.serviceRegisterCh:
-			// 这个地方不去重，如果上游代码有问题，可能会导致出现问题，先简单做吧，todo
 			if _, ok := r.registerServices[service.Name]; ok {
 				r.registerServices[service.Name].service.Endpoints = append(r.registerServices[service.Name].service.Endpoints, service.Endpoints...)
 				r.registerServices[service.Name].isRegistered = false // 重新上报到etcd
@@ -179,7 +178,7 @@ func (r *Register) unRegisterService(ctx context.Context, service *discov.Servic
 func (r *Register) KeepAlive(ctx context.Context, service *registerService) {
 	for {
 		select {
-		case <-service.keepAliveCh:
+		case _ = <-service.keepAliveCh:
 		default:
 			return
 		}
