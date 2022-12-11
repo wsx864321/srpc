@@ -11,7 +11,7 @@ import (
 type Random struct {
 }
 
-func NewRandom() LoadBalanceItf {
+func NewRandom() LoadBalance {
 	return &Random{}
 }
 

@@ -15,7 +15,7 @@ import (
 var defaultOptions = &Options{
 	IP:           "0.0.0.0",
 	Port:         9557,
-	Protocol:     transport.ProtocolTCP,
+	Network:      transport.NetworkTCP,
 	Serialize:    serialize.SerializeTypeJson,
 	ReadTimeout:  20 * time.Second,
 	WriteTimeout: 20 * time.Second,
@@ -26,7 +26,7 @@ var defaultOptions = &Options{
 type Options struct {
 	IP           string
 	Port         int
-	Protocol     transport.Transport
+	Network      transport.Transport
 	Serialize    serialize.SerializeType
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
@@ -48,9 +48,9 @@ func WithPort(port int) Option {
 	}
 }
 
-func WithProtocol(protocol transport.Transport) Option {
+func WithNetWork(network transport.Transport) Option {
 	return func(opt *Options) {
-		opt.Protocol = protocol
+		opt.Network = network
 	}
 }
 

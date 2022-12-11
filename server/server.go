@@ -35,7 +35,6 @@ type server struct {
 	cancel       context.CancelFunc // controller of context
 	interceptors []interceptor.ServerInterceptor
 	serviceMap   map[string]*service
-	transportMgr *transport.ServerTransportMgr
 }
 
 type service struct {
@@ -53,7 +52,6 @@ func NewServer(opts ...Option) *server {
 		cancel:       cancel,
 		interceptors: make([]interceptor.ServerInterceptor, 0),
 		serviceMap:   make(map[string]*service),
-		transportMgr: transport.NewServerTransportMgr(),
 	}
 }
 
@@ -156,7 +154,7 @@ func (s *server) checkMethod(methodName string, methodType reflect.Type) error {
 // Start 启动server
 func (s *server) Start() {
 	// 获取listener
-	serverTransport := s.transportMgr.Gen(s.opts.Protocol)
+	serverTransport := transport.GetTransport(s.opts.Network)
 	ln, err := serverTransport.Listen(fmt.Sprintf("%v:%v", s.opts.IP, s.opts.Port))
 	if err != nil {
 		panic(err)
@@ -176,6 +174,8 @@ func (s *server) Start() {
 					ServiceName: name,
 					IP:          s.opts.IP,
 					Port:        s.opts.Port,
+					Network:     string(s.opts.Network),
+					Serialize:   string(s.opts.Serialize),
 					Enable:      true,
 				},
 			},
