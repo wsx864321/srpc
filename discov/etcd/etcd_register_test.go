@@ -18,7 +18,7 @@ func TestNewETCDRegister(t *testing.T) {
 }
 
 func TestRegister_Register(t *testing.T) {
-	register := NewETCDRegister()
+	register := NewETCDRegister(WithEndpoints([]string{"127.0.0.1:2371"}))
 	register.Init(context.TODO())
 
 	service := &discov.Service{

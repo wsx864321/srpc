@@ -22,7 +22,7 @@ but，SweetRPC是一个学习RPC框架的好轮子，因为它足够简单，麻
 ## 传输协议（http、http2、tcp、quic）
 - [ ] http
 - [ ] http2
-- [ ] tcp
+- [X] tcp
 - [ ] quic
 ## 数据序列化（json、pb、msgpack）
 - [X] json

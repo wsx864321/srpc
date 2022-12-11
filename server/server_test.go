@@ -1,8 +1,11 @@
 package server
 
-import "testing"
+import (
+	"github.com/wsx864321/sweet_rpc/discov/etcd"
+	"testing"
+)
 
 func TestNewServer(t *testing.T) {
-	s := NewServer()
+	s := NewServer(WithDiscovery(etcd.NewETCDRegister(etcd.WithEndpoints([]string{"127.0.0.1:2371"}))))
 	s.Start()
 }
