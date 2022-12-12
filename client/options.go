@@ -16,6 +16,7 @@ type Options struct {
 	serviceName  string
 	interceptors []interceptor.ClientInterceptor
 	writeTimeout time.Duration
+	timeout      time.Duration
 	readTimeout  time.Duration
 	lb           lb.LoadBalance
 }
@@ -31,6 +32,30 @@ func WithServiceName(srvName string) Option {
 func WithInterceptors(interceptor ...interceptor.ClientInterceptor) Option {
 	return func(o *Options) {
 		o.interceptors = interceptor
+	}
+}
+
+func WithWriteTimeout(duration time.Duration) Option {
+	return func(o *Options) {
+		o.writeTimeout = duration
+	}
+}
+
+func WithTimeout(duration time.Duration) Option {
+	return func(o *Options) {
+		o.timeout = duration
+	}
+}
+
+func WithReadTimeout(duration time.Duration) Option {
+	return func(o *Options) {
+		o.readTimeout = duration
+	}
+}
+
+func WithLoadBalance(balance lb.LoadBalance) Option {
+	return func(o *Options) {
+		o.lb = balance
 	}
 }
 

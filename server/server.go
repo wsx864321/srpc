@@ -96,7 +96,7 @@ func (s *server) RegisterService(serName string, srv interface{}) {
 				return resp[0].Interface(), resp[1].Interface().(error)
 			}
 
-			return interceptor.ServerIntercept(context.TODO(), req, s.interceptors, h)
+			return interceptor.ServerIntercept(ctx, req, s.interceptors, h)
 		}
 		methods[method.Name] = methodHandler
 	}
@@ -107,6 +107,7 @@ func (s *server) RegisterService(serName string, srv interface{}) {
 	}
 }
 
+// checkMethod todo 增加对proto协议的检测
 func (s *server) checkMethod(methodName string, methodType reflect.Type) error {
 	if methodType.NumIn() != 3 {
 		return fmt.Errorf("method %s invalid, the number of params != 2", methodName)
@@ -135,7 +136,6 @@ func (s *server) checkMethod(methodName string, methodType reflect.Type) error {
 	}
 
 	return nil
-
 }
 
 // Start 启动server
@@ -261,7 +261,12 @@ func (s *server) process(conn net.Conn) {
 	}
 
 	// 3.执行具体方法（包括注册的中间件）
-	resp, err := methodHandler(context.TODO(), msg.Payload)
+	ctx := context.Background()
+	if s.opts.Timeout > 0 {
+		// 超时控制统一在timeoutInterceptor中间件中执行
+		ctx, _ = context.WithTimeout(ctx, s.opts.Timeout)
+	}
+	resp, err := methodHandler(ctx, msg.Payload)
 
 	// 4.对client发送返回数据
 	var response codec.Response
@@ -274,6 +279,12 @@ func (s *server) process(conn net.Conn) {
 	}
 	response.Data = resp
 	raw, _ := serialize.GetSerialize(s.opts.Serialize).Marshal(&response)
+	if s.opts.WriteTimeout > 0 {
+		if err = conn.SetWriteDeadline(time.Now().Add(s.opts.WriteTimeout)); err != nil {
+			// todo
+		}
+	}
+
 	if _, err = conn.Write(raw); err != nil {
 		//s.opts.Logger.Errorf(context.TODO(), "extractMessage error:%v", err.Error())
 	}
@@ -284,8 +295,10 @@ func (s *server) process(conn net.Conn) {
 // extractMessage 提取message内容
 func (s *server) extractMessage(conn net.Conn) (*codec.Message, error) {
 	// 1.设置读取超时时间
-	if err := conn.SetReadDeadline(time.Now().Add(s.opts.ReadTimeout)); err != nil {
-		return nil, err
+	if s.opts.ReadTimeout > 0 {
+		if err := conn.SetReadDeadline(time.Now().Add(s.opts.ReadTimeout)); err != nil {
+			return nil, err
+		}
 	}
 
 	// 2.读取头部内容

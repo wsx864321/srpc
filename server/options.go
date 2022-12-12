@@ -17,8 +17,9 @@ var defaultOptions = &Options{
 	Port:         9557,
 	Network:      transport.NetworkTCP,
 	Serialize:    serialize.SerializeTypeJson,
-	ReadTimeout:  20 * time.Second,
-	WriteTimeout: 20 * time.Second,
+	ReadTimeout:  1 * time.Second,
+	Timeout:      5 * time.Second,
+	WriteTimeout: 1 * time.Second,
 	Discovery:    etcd.NewETCDRegister(),
 	Logger:       logger.NewSweetLog(),
 }
@@ -29,6 +30,7 @@ type Options struct {
 	Network      transport.Transport
 	Serialize    serialize.SerializeType
 	ReadTimeout  time.Duration
+	Timeout      time.Duration
 	WriteTimeout time.Duration
 	Discovery    discov.Discovery
 	Logger       logger.Log
@@ -63,6 +65,12 @@ func WithSerialize(serializeType serialize.SerializeType) Option {
 func WithReadTimeout(duration time.Duration) Option {
 	return func(opt *Options) {
 		opt.ReadTimeout = duration
+	}
+}
+
+func WithTimeOut(duration time.Duration) Option {
+	return func(opt *Options) {
+		opt.Timeout = duration
 	}
 }
 
