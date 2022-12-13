@@ -79,21 +79,13 @@ func (s *server) RegisterService(serName string, srv interface{}) {
 			}
 
 			h := func(ctx context.Context, req interface{}) (interface{}, error) {
-				resp := svrType.Method(i).Func.Call([]reflect.Value{svrValue, reflect.ValueOf(ctx), reflect.ValueOf(req)})
-
-				if resp[0].IsValid() && resp[1].IsValid() {
-					return nil, nil
+				resp := method.Func.Call([]reflect.Value{svrValue, reflect.ValueOf(ctx), reflect.ValueOf(req)})
+				errInterface := resp[1].Interface()
+				if errInterface != nil {
+					return resp[0].Interface(), errInterface.(error)
 				}
+				return resp[0].Interface(), nil
 
-				if resp[0].IsValid() && !resp[1].IsValid() {
-					return nil, resp[1].Interface().(error)
-				}
-
-				if !resp[0].IsValid() && resp[1].IsValid() {
-					return resp[0].Interface(), nil
-				}
-
-				return resp[0].Interface(), resp[1].Interface().(error)
 			}
 
 			return interceptor.ServerIntercept(ctx, req, s.interceptors, h)
@@ -147,10 +139,13 @@ func (s *server) Start() {
 		panic(err)
 	}
 
-	s.opts.Logger.Infof(context.TODO(), "server start at %s", fmt.Sprintf("%v:%v", s.opts.IP, s.opts.Port))
+	s.opts.Logger.Infof(context.TODO(), "%s server start at %s", s.opts.Network, fmt.Sprintf("%v:%v", s.opts.IP, s.opts.Port))
 
 	// accept请求
 	go s.run(ln)
+
+	// 等待100ms，让服务先接收请求
+	time.Sleep(100 * time.Millisecond)
 
 	// 注册服务
 	for name, _ := range s.serviceMap {
@@ -238,7 +233,7 @@ func (s *server) process(conn net.Conn) {
 		if r := recover(); r != nil {
 			stack := make([]byte, 4096)
 			stack = stack[:runtime.Stack(stack, false)]
-			s.opts.Logger.Errorf(context.TODO(), "err:%v\n.stack:%v", r, string(stack))
+			s.opts.Logger.Errorf(context.TODO(), "\nerr:%v\nstack:%v", r, string(stack))
 		}
 	}()
 

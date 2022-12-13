@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 )
 
@@ -19,5 +20,5 @@ type HelloWorldResp struct {
 func (h *HelloWorld) SayHello(ctx context.Context, req *HelloWorldReq) (*HelloWorldResp, error) {
 	return &HelloWorldResp{
 		Msg: fmt.Sprintf("%s say hello", req.Name),
-	}, nil
+	}, errors.New("xxx")
 }

@@ -134,7 +134,7 @@ func (c *Codec) Decode(data []byte) (*Message, error) {
 
 func (c *Codec) DecodeBody(header *Header, data []byte) (*Message, error) {
 	var msg Message
-	serviceNameStartPos := headerByteLength
+	serviceNameStartPos := 0
 	msg.ServiceName = string(data[serviceNameStartPos : serviceNameStartPos+int(header.ServiceNameSize)])
 
 	serviceMethodStartPos := serviceNameStartPos + int(header.ServiceNameSize)
@@ -169,7 +169,7 @@ func (c *Codec) DecodeHeader(data []byte) (*Header, error) {
 		return nil, err
 	}
 
-	if magicNum != magicNum {
+	if magicNum != magicNumConst {
 		return nil, errors.New("invalid data")
 	}
 
@@ -223,7 +223,7 @@ func (c *Codec) GetHeaderLength() int {
 }
 
 func (c *Codec) GetBodyLength(header *Header) int {
-	return headerByteLength + int(header.ServiceNameSize) + int(header.ServiceMethodSize) + int(header.MetaSize) + int(header.PayloadSize)
+	return int(header.ServiceNameSize) + int(header.ServiceMethodSize) + int(header.MetaSize) + int(header.PayloadSize)
 }
 
 type Response struct {
