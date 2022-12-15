@@ -43,7 +43,7 @@ type service struct {
 }
 
 // NewServer 生成一个server
-func NewServer(opts ...Option) *server {
+func NewServer(opts ...Option) Server {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &server{
 		opts:         NewOptions(opts...),
@@ -148,7 +148,7 @@ func (s *server) Start() {
 	time.Sleep(100 * time.Millisecond)
 
 	// 注册服务
-	for name, _ := range s.serviceMap {
+	for name := range s.serviceMap {
 		s.opts.Discovery.Register(context.TODO(), &discov.Service{
 			Name: name,
 			Endpoints: []*discov.Endpoint{
@@ -182,7 +182,7 @@ func (s *server) Start() {
 
 func (s *server) Stop() {
 	// 服务取消注册
-	for name, _ := range s.serviceMap {
+	for name := range s.serviceMap {
 		s.opts.Discovery.UnRegister(context.TODO(), &discov.Service{
 			Name: name,
 			Endpoints: []*discov.Endpoint{

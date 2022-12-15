@@ -1,17 +1,24 @@
 package pool
 
 import (
+	"errors"
 	"net"
-	"sync"
 )
 
-type ConnectionPool struct {
-}
+var (
+	//ErrClosed 连接池已经关闭Error
+	ErrClosed = errors.New("pool is closed")
+)
 
-type pool struct {
-	conns *sync.Map
-}
+// Pool 基本方法
+type Pool interface {
+	Get(address, network string) (net.Conn, error)
 
-type connection struct {
-	net.Conn
+	Put(conn net.Conn) error
+
+	Close(conn net.Conn) error
+
+	Release()
+
+	Len() int
 }
