@@ -197,10 +197,10 @@ func (r *Register) UnRegister(ctx context.Context, service *discov.Service) {
 	r.serviceUnRegisterCh <- service
 }
 
-func (r *Register) GetService(ctx context.Context, name string) *discov.Service {
+func (r *Register) GetService(ctx context.Context, name string) (*discov.Service, error) {
 	allServices := r.getDownServices()
 	if val, ok := allServices[name]; ok {
-		return val
+		return val, nil
 	}
 
 	// 防止并发获取service导致cache中的数据混乱
@@ -208,7 +208,10 @@ func (r *Register) GetService(ctx context.Context, name string) *discov.Service 
 	defer r.lock.Unlock()
 
 	key := r.getEtcdRegisterPrefixKey(name)
-	getResp, _ := r.cli.Get(ctx, key, clientv3.WithPrefix())
+	getResp, err := r.cli.Get(ctx, key, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
 	service := &discov.Service{
 		Name:      name,
 		Endpoints: make([]*discov.Endpoint, 0),
@@ -228,7 +231,7 @@ func (r *Register) GetService(ctx context.Context, name string) *discov.Service 
 
 	go r.watch(ctx, key, getResp.Header.Revision+1)
 
-	return service
+	return service, nil
 }
 
 func (r *Register) watch(ctx context.Context, key string, revision int64) {

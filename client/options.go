@@ -1,15 +1,21 @@
 package client
 
 import (
+	"github.com/wsx864321/srpc/discov"
+	"github.com/wsx864321/srpc/discov/etcd"
 	"github.com/wsx864321/srpc/interceptor"
 	"github.com/wsx864321/srpc/lb"
+	"github.com/wsx864321/srpc/pool"
 	"time"
 )
 
 var defaultOptions = &Options{
-	writeTimeout: 5 * time.Second,
-	readTimeout:  5 * time.Second,
-	lb:           lb.NewRandom(),
+	writeTimeout: 500 * time.Millisecond,
+	timeout:      5 * time.Second,
+	readTimeout:  500 * time.Millisecond,
+	lbName:       lb.LoadBalanceRandom,
+	dis:          etcd.NewETCDRegister(),
+	pool:         pool.NewPool(),
 }
 
 type Options struct {
@@ -18,7 +24,9 @@ type Options struct {
 	writeTimeout time.Duration
 	timeout      time.Duration
 	readTimeout  time.Duration
-	lb           lb.LoadBalance
+	lbName       string
+	dis          discov.Discovery
+	pool         *pool.Pool
 }
 
 type Option func(o *Options)
@@ -53,9 +61,21 @@ func WithReadTimeout(duration time.Duration) Option {
 	}
 }
 
-func WithLoadBalance(balance lb.LoadBalance) Option {
+func WithLoadBalance(name string) Option {
 	return func(o *Options) {
-		o.lb = balance
+		o.lbName = name
+	}
+}
+
+func WithDiscovery(discovery discov.Discovery) Option {
+	return func(o *Options) {
+		o.dis = discovery
+	}
+}
+
+func WithPool(pool *pool.Pool) Option {
+	return func(o *Options) {
+		o.pool = pool
 	}
 }
 

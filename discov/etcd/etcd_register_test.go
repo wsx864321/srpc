@@ -30,7 +30,7 @@ func TestRegister_Register(t *testing.T) {
 	}
 	register.Register(context.TODO(), service)
 	time.Sleep(2 * time.Second)
-	registerService := register.GetService(context.TODO(), "test")
+	registerService, _ := register.GetService(context.TODO(), "test")
 
 	assert.Equal(t, *service.Endpoints[0], *registerService.Endpoints[0])
 }

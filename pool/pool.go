@@ -2,7 +2,9 @@ package pool
 
 import (
 	"errors"
+	"fmt"
 	"net"
+	"sync"
 )
 
 var (
@@ -11,14 +13,58 @@ var (
 )
 
 // Pool 基本方法
-type Pool interface {
-	Get(address, network string) (net.Conn, error)
+//type Pool interface {
+//	Get(address, network string) (net.Conn, error)
+//
+//	Put(conn net.Conn) error
+//
+//	Close(conn net.Conn) error
+//
+//	Release()
+//
+//	Len() int
+//}
 
-	Put(conn net.Conn) error
+type Pool struct {
+	opts  *Options
+	conns *sync.Map
+}
 
-	Close(conn net.Conn) error
+func NewPool(opts ...Option) *Pool {
+	return &Pool{
+		opts:  NewOptions(opts...),
+		conns: &sync.Map{},
+	}
+}
 
-	Release()
+func (p *Pool) Get(network, address string) (net.Conn, error) {
+	if value, ok := p.conns.Load(p.getKey(network, network)); ok {
+		if cp, ok := value.(*channelPool); ok {
+			conn, err := cp.Get(network, address)
+			return conn, err
+		}
+	}
 
-	Len() int
+	cp, err := NewChannelPool(
+		WithInitialCap(p.opts.initialCap),
+		WithMaxCap(p.opts.maxCap),
+		WithFactory(p.opts.factory),
+		WithClose(p.opts.close),
+		WithPing(p.opts.ping),
+		WithIdleTimeout(p.opts.idleTimeout),
+		WithNetwork(network),
+		WithAddress(address),
+		WithDailTimeout(p.opts.dailTimeout),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	p.conns.Store(p.getKey(network, network), cp)
+
+	return cp.Get(network, address)
+}
+
+func (p *Pool) getKey(network, address string) string {
+	return fmt.Sprintf("%s://%s", network, address)
 }

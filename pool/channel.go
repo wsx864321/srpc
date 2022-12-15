@@ -29,7 +29,7 @@ type idleConn struct {
 }
 
 // NewChannelPool 初始化连接
-func NewChannelPool(opts ...Option) (Pool, error) {
+func NewChannelPool(opts ...Option) (*channelPool, error) {
 	opt := NewOptions(opts...)
 	if !(opt.initialCap <= opt.maxCap) {
 		return nil, errors.New("invalid capacity settings")

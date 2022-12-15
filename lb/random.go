@@ -8,6 +8,8 @@ import (
 	"github.com/wsx864321/srpc/discov"
 )
 
+const LoadBalanceRandom = "random"
+
 type Random struct {
 }
 
@@ -16,7 +18,7 @@ func NewRandom() LoadBalance {
 }
 
 func (r *Random) Name() string {
-	return "random"
+	return LoadBalanceRandom
 }
 
 func (r *Random) Pick(service *discov.Service) (*discov.Endpoint, error) {

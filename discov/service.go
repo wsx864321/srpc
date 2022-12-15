@@ -1,5 +1,7 @@
 package discov
 
+import "fmt"
+
 type Service struct {
 	Name      string      `json:"name"`
 	Endpoints []*Endpoint `json:"endpoints"`
@@ -15,4 +17,8 @@ type Endpoint struct {
 	Network     string `json:"network"`
 	Serialize   string `json:"serialize"`
 	Enable      bool   `json:"enable"`
+}
+
+func (e *Endpoint) GetAddr() string {
+	return fmt.Sprintf("%s:%d", e.IP, e.Port)
 }
