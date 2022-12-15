@@ -68,7 +68,7 @@ func (c *channelPool) getConns() chan *idleConn {
 	return conns
 }
 
-// Get 从pool中取一个连接
+// Get 从pool中取一个连接 todo 增加超时控制
 func (c *channelPool) Get(address, network string) (net.Conn, error) {
 	conns := c.getConns()
 	if conns == nil {
