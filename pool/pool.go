@@ -30,6 +30,7 @@ type Pool struct {
 	conns *sync.Map
 }
 
+// NewPool todo 增加异步client链接检查，防止下游节点因为服务下线而连接还保存在map中造成缓慢的内存泄露和fd的浪费
 func NewPool(opts ...Option) *Pool {
 	return &Pool{
 		opts:  NewOptions(opts...),
