@@ -6,6 +6,7 @@ import (
 	"github.com/wsx864321/srpc/codec"
 	"github.com/wsx864321/srpc/codec/serialize"
 	"github.com/wsx864321/srpc/transport"
+	"github.com/wsx864321/srpc/util"
 	"net"
 	"os"
 	"os/signal"
@@ -298,7 +299,7 @@ func (s *server) extractMessage(conn net.Conn) (*codec.Message, error) {
 
 	// 2.读取头部内容
 	headerData := make([]byte, s.codec.GetHeaderLength())
-	if err := s.readFixedData(conn, headerData); err != nil {
+	if err := util.Read(conn, headerData); err != nil {
 		return nil, err
 	}
 
@@ -309,28 +310,9 @@ func (s *server) extractMessage(conn net.Conn) (*codec.Message, error) {
 
 	// 3.读取message内容
 	body := make([]byte, s.codec.GetBodyLength(header))
-	if err = s.readFixedData(conn, body); err != nil {
+	if err = util.Read(conn, body); err != nil {
 		return nil, err
 	}
 
 	return s.codec.DecodeBody(header, body)
-}
-
-// readFixedData 读取固定长度内容
-func (s *server) readFixedData(conn net.Conn, buf []byte) error {
-	var (
-		pos       = 0
-		totalSize = len(buf)
-	)
-	for {
-		c, err := conn.Read(buf[pos:])
-		if err != nil {
-			return err
-		}
-		pos = pos + c
-		if pos == totalSize {
-			break
-		}
-	}
-	return nil
 }

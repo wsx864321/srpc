@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+option go_package = "./;metadata";
+
+message Metadata {
+  map<string,string> data = 1;
+}

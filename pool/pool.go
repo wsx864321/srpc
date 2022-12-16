@@ -60,9 +60,17 @@ func (p *Pool) Get(network, address string) (net.Conn, error) {
 		return nil, err
 	}
 
-	p.conns.Store(p.getKey(network, network), cp)
+	p.conns.Store(p.getKey(network, address), cp)
 
 	return cp.Get(network, address)
+}
+
+func (p *Pool) Put(network, address string, conn net.Conn) {
+	if value, ok := p.conns.Load(p.getKey(network, network)); ok {
+		if cp, ok := value.(*channelPool); ok {
+			cp.Put(conn)
+		}
+	}
 }
 
 func (p *Pool) getKey(network, address string) string {

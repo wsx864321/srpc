@@ -5,15 +5,16 @@ import "net"
 type Transport string
 
 const (
-	NetworkTCP   Transport = "tcp"
-	ProtocolUDP            = "udp"
-	ProtocolKCP            = "kcp"
-	ProtocolHTTP           = "http"
-	ProtocolQUIC           = "quic"
+	NetworkTCP  Transport = "tcp"
+	NetworkUDP            = "udp"
+	NetworkKCP            = "kcp"
+	NetworkHTTP           = "http"
+	NetworkQUIC           = "quic"
 )
 
 var transportMgr = map[Transport]ServerTransport{
 	NetworkTCP: newTCP(),
+	NetworkUDP: newUDP(),
 }
 
 type ServerTransport interface {

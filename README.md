@@ -13,7 +13,7 @@ but，srpc是一个学习RPC框架的好轮子，因为它足够简单，麻雀�
 - [ ] nacos
 - [ ] consul
 
-因为srpc框架是Go语言实现的轮子，所以我们暂且先选着ETCD实现，虽然我个人认为ETCD并不是
+因为srpc框架是Go语言实现的轮子，所以我们暂且先选择ETCD实现，虽然我个人认为ETCD并不是
 实现服务发现&服务注册最优的组件（AP组件可能会好点），如果有人想实现其它组件可以提PR。推荐一篇 
 各组件对比的文章[https://mp.weixin.qq.com/s/MGmbAz41zJGXwyPrmEeRBw](https://mp.weixin.qq.com/s/MGmbAz41zJGXwyPrmEeRBw)
 
@@ -24,7 +24,7 @@ but，srpc是一个学习RPC框架的好轮子，因为它足够简单，麻雀�
 - [ ] http2
 - [X] tcp
 - [ ] quic
-- [ ] udp
+- [X] udp
 ## 数据序列化（json、pb、msgpack）
 - [X] json
 - [X] pb
@@ -53,4 +53,50 @@ but，srpc是一个学习RPC框架的好轮子，因为它足够简单，麻雀�
 - [ ] Failtry
 - [ ] Failbackup
 
+## 服务端
+
+## 客户端
+
 ## 使用
+
+### server
+
+下面是server端使用的DEMO
+
+```go
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	
+	"github.com/wsx864321/srpc/discov/etcd"
+	"github.com/wsx864321/srpc/server"
+)
+
+
+type HelloWorld struct {
+}
+
+type HelloWorldReq struct {
+	Name string `json:"name"`
+}
+
+type HelloWorldResp struct {
+	Msg string `json:"msg"`
+}
+
+func (h *HelloWorld) SayHello(ctx context.Context, req *HelloWorldReq) (*HelloWorldResp, error) {
+	return &HelloWorldResp{
+		Msg: fmt.Sprintf("%s say hello", req.Name),
+	}, nil
+}
+
+func main() {
+    s := server.NewServer(server.WithDiscovery(etcd.NewETCDRegister(etcd.WithEndpoints([]string{"127.0.0.1:2371"}))))
+    s.RegisterService("helloworld", &HelloWorld{})
+    s.Start()
+}
+
+```
