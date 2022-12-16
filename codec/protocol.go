@@ -10,6 +10,10 @@ const (
 	magicNumConst    uint8 = 0x11
 	versionConst     uint8 = 0x1
 	headerByteLength       = 24
+
+	GeneralMsgType uint8 = 0x0
+
+	CompressTypeNot uint8 = 0x0
 )
 
 /**

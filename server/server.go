@@ -281,7 +281,7 @@ func (s *server) process(conn net.Conn) {
 		}
 	}
 
-	if _, err = conn.Write(raw); err != nil {
+	if err = util.Write(conn, raw); err != nil {
 		//s.opts.Logger.Errorf(context.TODO(), "extractMessage error:%v", err.Error())
 	}
 
@@ -299,7 +299,7 @@ func (s *server) extractMessage(conn net.Conn) (*codec.Message, error) {
 
 	// 2.读取头部内容
 	headerData := make([]byte, s.codec.GetHeaderLength())
-	if err := util.Read(conn, headerData); err != nil {
+	if err := util.ReadFixData(conn, headerData); err != nil {
 		return nil, err
 	}
 
@@ -310,7 +310,7 @@ func (s *server) extractMessage(conn net.Conn) (*codec.Message, error) {
 
 	// 3.读取message内容
 	body := make([]byte, s.codec.GetBodyLength(header))
-	if err = util.Read(conn, body); err != nil {
+	if err = util.ReadFixData(conn, body); err != nil {
 		return nil, err
 	}
 

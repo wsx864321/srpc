@@ -2,8 +2,8 @@ package util
 
 import "net"
 
-// Read 读取网络连接对端发送的内容
-func Read(conn net.Conn, buf []byte) error {
+// ReadFixData 读取网络连接对端发送的固定长度的内容
+func ReadFixData(conn net.Conn, buf []byte) error {
 	var (
 		pos       = 0
 		totalSize = len(buf)
