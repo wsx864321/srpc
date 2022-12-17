@@ -39,7 +39,7 @@ func NewPool(opts ...Option) *Pool {
 }
 
 func (p *Pool) Get(network, address string) (net.Conn, error) {
-	if value, ok := p.conns.Load(p.getKey(network, network)); ok {
+	if value, ok := p.conns.Load(p.getKey(network, address)); ok {
 		if cp, ok := value.(*channelPool); ok {
 			conn, err := cp.Get(network, address)
 			return conn, err
