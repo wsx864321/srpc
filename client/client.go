@@ -85,7 +85,7 @@ func (c *Client) Call(ctx context.Context, methodName string, req, resp interfac
 
 		// 4.4 发送请求数据
 		if c.opts.writeTimeout > 0 {
-			if err = conn.SetReadDeadline(time.Now().Add(c.opts.writeTimeout)); err != nil {
+			if err = conn.SetWriteDeadline(time.Now().Add(c.opts.writeTimeout)); err != nil {
 				return err
 			}
 		}
