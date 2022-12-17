@@ -2,22 +2,30 @@ package client
 
 import (
 	"context"
+	"errors"
+	"net"
+	"time"
+
+	srpcerr "github.com/wsx864321/srpc/err"
+
 	"github.com/wsx864321/srpc/codec"
 	"github.com/wsx864321/srpc/codec/serialize"
 	"github.com/wsx864321/srpc/interceptor"
 	"github.com/wsx864321/srpc/lb"
 	"github.com/wsx864321/srpc/util"
-	"time"
 )
 
 type Client struct {
 	opts *Options
+
+	codec *codec.Codec
 }
 
 // NewClient 生成client对象
 func NewClient(opts ...Option) *Client {
 	client := &Client{
-		opts: NewOptions(opts...),
+		opts:  NewOptions(opts...),
+		codec: codec.NewCodec(),
 	}
 
 	return client
@@ -68,22 +76,66 @@ func (c *Client) Call(ctx context.Context, methodName string, req, resp interfac
 
 		// 4.4 发送请求数据
 		if c.opts.writeTimeout > 0 {
-			if err := conn.SetReadDeadline(time.Now().Add(c.opts.writeTimeout)); err != nil {
+			if err = conn.SetReadDeadline(time.Now().Add(c.opts.writeTimeout)); err != nil {
 				return err
 			}
 		}
 
-		if err := util.Write(conn, request); err != nil {
+		if err = util.Write(conn, request); err != nil {
 			return err
 		}
 
 		// 4.5 接受数据
+		msg, err := c.extractMessage(conn)
+		if err != nil {
+			return err
+		}
 
-		//conn.Read(resp.([]byte))
+		var errResp srpcerr.Error
+		if err = serialize.GetSerialize(serialize.SerializeType(endpoint.Serialize)).Unmarshal(msg.Payload, &errResp); err != nil {
+			return err
+		}
+
+		if errResp.Code != srpcerr.Ok {
+			return errors.New(errResp.Error())
+		}
+
+		if err = serialize.GetSerialize(serialize.SerializeType(endpoint.Serialize)).Unmarshal(errResp.Data, resp); err != nil {
+			return err
+		}
 
 		return nil
 	}
 
 	// 5.执行中间件以及invoker函数
 	return interceptor.ClientIntercept(ctx, req, resp, c.opts.interceptors, invoker)
+}
+
+// extractMessage 提取message内容
+func (c *Client) extractMessage(conn net.Conn) (*codec.Message, error) {
+	// 1.设置读取超时时间
+	if c.opts.readTimeout > 0 {
+		if err := conn.SetReadDeadline(time.Now().Add(c.opts.readTimeout)); err != nil {
+			return nil, err
+		}
+	}
+
+	// 2.读取头部内容
+	headerData := make([]byte, c.codec.GetHeaderLength())
+	if err := util.ReadFixData(conn, headerData); err != nil {
+		return nil, err
+	}
+
+	header, err := c.codec.DecodeHeader(headerData)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3.读取message内容
+	body := make([]byte, c.codec.GetBodyLength(header))
+	if err = util.ReadFixData(conn, body); err != nil {
+		return nil, err
+	}
+
+	return c.codec.DecodeBody(header, body)
 }

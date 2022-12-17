@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+option go_package = "./;err";
+
+message Error {
+  int32 Code = 1;
+  string Msg = 2;
+  bytes Data = 3;
+}

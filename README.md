@@ -60,7 +60,7 @@ but，srpc是一个学习RPC框架的“好轮子”（王婆卖瓜自卖自夸�
 
 ### server
 
-下面是server端使用的DEMO
+server.go
 
 ```go
 package main
@@ -98,4 +98,38 @@ func main() {
     s.Start()
 }
 
+```
+
+client.go
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/wsx864321/srpc/client"
+	"github.com/wsx864321/srpc/discov/etcd"
+)
+
+type HelloWorldReq struct {
+	Name string `json:"name"`
+}
+
+type HelloWorldResp struct {
+	Msg string `json:"msg"`
+}
+
+func main() {
+	req := &HelloWorldReq{
+		Name: "wsx",
+	}
+	var resp HelloWorldResp
+	ctx, _ := context.WithTimeout(context.TODO(), 2*time.Second)
+	cli := client.NewClient(client.WithServiceName("helloworld"), client.WithDiscovery(etcd.NewETCDRegister(etcd.WithEndpoints([]string{"127.0.0.1:2371"}))))
+	err := cli.Call(ctx, "SayHello", req, &resp)
+	fmt.Println(resp, err)
+}
 ```

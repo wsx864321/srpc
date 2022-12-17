@@ -3,10 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/wsx864321/srpc/codec"
-	"github.com/wsx864321/srpc/codec/serialize"
-	"github.com/wsx864321/srpc/transport"
-	"github.com/wsx864321/srpc/util"
 	"net"
 	"os"
 	"os/signal"
@@ -15,9 +11,15 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+	"github.com/wsx864321/srpc/codec"
+	"github.com/wsx864321/srpc/codec/serialize"
 	"github.com/wsx864321/srpc/discov"
-
+	srpcerr "github.com/wsx864321/srpc/err"
 	"github.com/wsx864321/srpc/interceptor"
+	"github.com/wsx864321/srpc/metadata"
+	"github.com/wsx864321/srpc/transport"
+	"github.com/wsx864321/srpc/util"
 )
 
 type handler func(ctx context.Context, body []byte) (interface{}, error)
@@ -74,6 +76,7 @@ func (s *server) RegisterService(serName string, srv interface{}) {
 		}
 
 		methodHandler := func(ctx context.Context, body []byte) (interface{}, error) {
+			fmt.Println(string(body))
 			req := reflect.New(method.Type.In(2).Elem()).Interface()
 			if err := serialize.GetSerialize(s.opts.Serialize).Unmarshal(body, req); err != nil {
 				return nil, err
@@ -100,7 +103,7 @@ func (s *server) RegisterService(serName string, srv interface{}) {
 	}
 }
 
-// checkMethod todo 增加对proto协议的检测
+// checkMethod
 func (s *server) checkMethod(methodName string, methodType reflect.Type) error {
 	if methodType.NumIn() != 3 {
 		return fmt.Errorf("method %s invalid, the number of params != 2", methodName)
@@ -115,12 +118,26 @@ func (s *server) checkMethod(methodName string, methodType reflect.Type) error {
 		return fmt.Errorf("method %s invalid, first param is not context", methodName)
 	}
 
-	if methodType.In(2).Kind() != reflect.Ptr {
-		return fmt.Errorf("method %s invalid, second param is not ptr", methodName)
+	if s.opts.Serialize == serialize.SerializeTypeProto {
+		var p *proto.Message
+		if !methodType.In(2).Implements(reflect.TypeOf(p).Elem()) {
+			return fmt.Errorf("method %s invalid, second param is not proto.Message", methodName)
+		}
+	} else {
+		if methodType.In(2).Kind() != reflect.Ptr {
+			return fmt.Errorf("method %s invalid, second param is not ptr", methodName)
+		}
 	}
 
-	if methodType.Out(0).Kind() != reflect.Ptr {
-		return fmt.Errorf("method %s invalid, first reply type is not a pointer", methodName)
+	if s.opts.Serialize == serialize.SerializeTypeProto {
+		var p *proto.Message
+		if !methodType.Out(0).Implements(reflect.TypeOf(p).Elem()) {
+			return fmt.Errorf("method %s invalid, second param is not proto.Message", methodName)
+		}
+	} else {
+		if methodType.Out(0).Kind() != reflect.Ptr {
+			return fmt.Errorf("method %s invalid, first reply type is not a pointer", methodName)
+		}
 	}
 
 	var err *error
@@ -245,19 +262,30 @@ func (s *server) process(conn net.Conn) {
 		return
 	}
 
-	//2.找到注册的服务和方法
+	// 2.提取metadata
+	metaData := make(map[string]string)
+	if len(msg.MetaData) != 0 {
+		if err = serialize.GetSerialize(s.opts.Serialize).Unmarshal(msg.MetaData, &metaData); err != nil {
+			s.wireErr(context.TODO(), conn, srpcerr.NewError(srpcerr.UnKnowErr, err.Error()))
+			return
+		}
+	}
+	ctx := metadata.WithServerMetadata(context.Background(), metaData)
+
+	//3.找到注册的服务和方法
 	srv, ok := s.serviceMap[msg.ServiceName]
 	if !ok {
-		// todo 没有的service
+		s.wireErr(ctx, conn, srpcerr.ServiceNotExistErr)
+		return
 	}
 
 	methodHandler, ok := srv.methods[msg.ServiceMethod]
 	if !ok {
-		// todo 没有的方法
+		s.wireErr(ctx, conn, srpcerr.MethodNotExistErr)
+		return
 	}
 
 	// 3.执行具体方法（包括注册的中间件）
-	ctx := context.Background()
 	if s.opts.Timeout > 0 {
 		// 超时控制统一在timeoutInterceptor中间件中执行
 		ctx, _ = context.WithTimeout(ctx, s.opts.Timeout)
@@ -265,24 +293,36 @@ func (s *server) process(conn net.Conn) {
 	resp, err := methodHandler(ctx, msg.Payload)
 
 	// 4.对client发送返回数据
-	var response codec.Response
 	if err != nil {
-		response.Msg = err.Error()
-		response.Code = -1
-	} else {
-		response.Msg = ""
-		response.Code = 0
+		if err, ok := err.(*srpcerr.Error); ok {
+			s.wireErr(ctx, conn, err)
+			return
+		}
+
+		s.wireErr(ctx, conn, srpcerr.NewError(srpcerr.UnKnowErr, err.Error()))
+		return
 	}
-	response.Data = resp
-	raw, _ := serialize.GetSerialize(s.opts.Serialize).Marshal(&response)
+
+	raw, _ := serialize.GetSerialize(s.opts.Serialize).Marshal(&resp)
+	raw, _ = serialize.GetSerialize(s.opts.Serialize).Marshal(srpcerr.OkErr.WithData(raw))
 	if s.opts.WriteTimeout > 0 {
 		if err = conn.SetWriteDeadline(time.Now().Add(s.opts.WriteTimeout)); err != nil {
-			// todo
+			resp, _ := serialize.GetSerialize(s.opts.Serialize).Marshal(err)
+			raw, err = s.codec.Encode(codec.GeneralMsgType, codec.CompressTypeNot, uint64(time.Now().Unix()), []byte(""), []byte(""), []byte(""), resp)
+			if err != nil {
+				s.opts.Logger.Errorf(ctx, "write error:%v", err.Error())
+				return
+			}
+			if err = util.Write(conn, raw); err != nil {
+				s.opts.Logger.Errorf(ctx, "write error:%v", err.Error())
+				return
+			}
 		}
 	}
 
+	raw, err = s.codec.Encode(codec.GeneralMsgType, codec.CompressTypeNot, uint64(time.Now().Unix()), []byte(""), []byte(""), []byte(""), raw)
 	if err = util.Write(conn, raw); err != nil {
-		//s.opts.Logger.Errorf(context.TODO(), "extractMessage error:%v", err.Error())
+		s.opts.Logger.Errorf(ctx, "write error:%v", err.Error())
 	}
 
 	return
@@ -315,4 +355,36 @@ func (s *server) extractMessage(conn net.Conn) (*codec.Message, error) {
 	}
 
 	return s.codec.DecodeBody(header, body)
+}
+
+func (s *server) wireErr(ctx context.Context, conn net.Conn, err *srpcerr.Error) {
+	if s.opts.WriteTimeout > 0 {
+		if e := conn.SetWriteDeadline(time.Now().Add(s.opts.WriteTimeout)); e != nil {
+			s.opts.Logger.Errorf(context.TODO(), "SetWriteDeadline error:%v", err.Error())
+			resp, _ := serialize.GetSerialize(s.opts.Serialize).Marshal(err)
+			raw, e := s.codec.Encode(codec.GeneralMsgType, codec.CompressTypeNot, uint64(time.Now().Unix()), []byte(""), []byte(""), []byte(""), resp)
+			if e != nil {
+				s.opts.Logger.Errorf(ctx, "write error:%v", e.Error())
+				return
+			}
+
+			if e = util.Write(conn, raw); e != nil {
+				s.opts.Logger.Errorf(ctx, "write error:%v", e.Error())
+			}
+			return
+		}
+	}
+
+	resp, _ := serialize.GetSerialize(s.opts.Serialize).Marshal(err)
+	raw, e := s.codec.Encode(codec.GeneralMsgType, codec.CompressTypeNot, uint64(time.Now().Unix()), []byte(""), []byte(""), []byte(""), resp)
+	if e != nil {
+		s.opts.Logger.Errorf(ctx, "write error:%v", e.Error())
+		return
+	}
+
+	if e := util.Write(conn, raw); e != nil {
+		s.opts.Logger.Errorf(ctx, "write error:%v", e.Error())
+	}
+
+	return
 }
