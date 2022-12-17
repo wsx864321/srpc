@@ -76,7 +76,6 @@ func (s *server) RegisterService(serName string, srv interface{}) {
 		}
 
 		methodHandler := func(ctx context.Context, body []byte) (interface{}, error) {
-			fmt.Println(string(body))
 			req := reflect.New(method.Type.In(2).Elem()).Interface()
 			if err := serialize.GetSerialize(s.opts.Serialize).Unmarshal(body, req); err != nil {
 				return nil, err
