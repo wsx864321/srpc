@@ -302,7 +302,7 @@ func (s *server) process(conn net.Conn) {
 		return
 	}
 
-	raw, _ := serialize.GetSerialize(s.opts.Serialize).Marshal(&resp)
+	raw, _ := serialize.GetSerialize(s.opts.Serialize).Marshal(resp)
 	raw, _ = serialize.GetSerialize(s.opts.Serialize).Marshal(srpcerr.OkErr.WithData(raw))
 	if s.opts.WriteTimeout > 0 {
 		if err = conn.SetWriteDeadline(time.Now().Add(s.opts.WriteTimeout)); err != nil {

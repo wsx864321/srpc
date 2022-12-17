@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+option go_package = "./;main";
+
+message HelloWorldReq {
+  string name = 1;
+}
+
+message HelloWorldResp {
+  string Msg = 1;
+}
