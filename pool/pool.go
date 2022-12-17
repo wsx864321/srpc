@@ -67,7 +67,7 @@ func (p *Pool) Get(network, address string) (net.Conn, error) {
 }
 
 func (p *Pool) Put(network, address string, conn net.Conn) {
-	if value, ok := p.conns.Load(p.getKey(network, network)); ok {
+	if value, ok := p.conns.Load(p.getKey(network, address)); ok {
 		if cp, ok := value.(*channelPool); ok {
 			cp.Put(conn)
 		}
