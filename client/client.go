@@ -3,6 +3,9 @@ package client
 import (
 	"context"
 	"errors"
+
+	"github.com/wsx864321/srpc/metadata"
+
 	"net"
 	"time"
 
@@ -59,7 +62,13 @@ func (c *Client) Call(ctx context.Context, methodName string, req, resp interfac
 			return err
 		}
 		// 4.2 获取metadata（trace、级联超时、用户其它自定义的数据等等）
-
+		metaData := metadata.ExtractClientMetadata(ctx)
+		metaDataRaw, err := serialize.GetSerialize(serialize.SerializeType(endpoint.Serialize)).Marshal(&metadata.Metadata{
+			Data: metaData,
+		})
+		if err != nil {
+			return err
+		}
 		// 4.3 执行编码
 		request, err := codec.NewCodec().Encode(
 			codec.GeneralMsgType,
@@ -67,7 +76,7 @@ func (c *Client) Call(ctx context.Context, methodName string, req, resp interfac
 			uint64(time.Now().Unix()),
 			[]byte(c.opts.serviceName),
 			[]byte(methodName),
-			[]byte(""),
+			metaDataRaw,
 			raw,
 		)
 		if err != nil {

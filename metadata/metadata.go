@@ -9,8 +9,8 @@ type ClientMetadata map[string]string
 
 type ServerMetadata map[string]string
 
-// NewClientMetadata creates a new context with key-value pairs attached.
-func NewClientMetadata(ctx context.Context) ClientMetadata {
+// ExtractClientMetadata extract ClientMetadata from context
+func ExtractClientMetadata(ctx context.Context) ClientMetadata {
 	if md, ok := ctx.Value(clientMD{}).(ClientMetadata); ok {
 		return md
 	}
@@ -24,8 +24,8 @@ func WithClientMetadata(ctx context.Context, metadata map[string]string) context
 	return context.WithValue(ctx, clientMD{}, ClientMetadata(metadata))
 }
 
-// NewServerMetadata creates a new context with key-value pairs attached.
-func NewServerMetadata(ctx context.Context) ServerMetadata {
+// ExtractServerMetadata extract ServerMetadata from context
+func ExtractServerMetadata(ctx context.Context) ServerMetadata {
 	if md, ok := ctx.Value(serverMD{}).(ServerMetadata); ok {
 		return md
 	}

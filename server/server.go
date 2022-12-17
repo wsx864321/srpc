@@ -263,14 +263,14 @@ func (s *server) process(conn net.Conn) {
 	}
 
 	// 2.提取metadata
-	metaData := make(map[string]string)
+	var metaData metadata.Metadata
 	if len(msg.MetaData) != 0 {
 		if err = serialize.GetSerialize(s.opts.Serialize).Unmarshal(msg.MetaData, &metaData); err != nil {
 			s.wireErr(context.TODO(), conn, srpcerr.NewError(srpcerr.UnKnowErr, err.Error()))
 			return
 		}
 	}
-	ctx := metadata.WithServerMetadata(context.Background(), metaData)
+	ctx := metadata.WithServerMetadata(context.Background(), metaData.Data)
 
 	//3.找到注册的服务和方法
 	srv, ok := s.serviceMap[msg.ServiceName]
