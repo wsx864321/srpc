@@ -275,7 +275,6 @@ func (s *server) process(conn net.Conn) error {
 	msg, err := s.extractMessage(conn)
 	// 这里为什么不用io.EOF 可以见：https://blog.csdn.net/aixinaxc/article/details/89282364
 	if err != nil {
-		s.opts.Logger.Errorf(context.TODO(), "extractMessage error:%v", err.Error())
 		return err
 	}
 
