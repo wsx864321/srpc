@@ -11,13 +11,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/wsx864321/srpc/metadata"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/wsx864321/srpc/codec"
 	"github.com/wsx864321/srpc/codec/serialize"
 	"github.com/wsx864321/srpc/discov"
 	srpcerr "github.com/wsx864321/srpc/err"
 	"github.com/wsx864321/srpc/interceptor"
-	"github.com/wsx864321/srpc/metadata"
 	"github.com/wsx864321/srpc/transport"
 	"github.com/wsx864321/srpc/util"
 )
@@ -237,15 +238,15 @@ func (s *server) run(ln net.Listener) {
 			}
 
 			// 开启一个协程处理请求
-			go s.process(accept)
+			go s.handleConn(s.ctx, accept)
 		}
 
 	}
 
 }
 
-// process logic
-func (s *server) process(conn net.Conn) {
+// handleConn logic
+func (s *server) handleConn(pCtx context.Context, conn net.Conn) {
 	defer func() {
 		if r := recover(); r != nil {
 			stack := make([]byte, 4096)
@@ -254,11 +255,28 @@ func (s *server) process(conn net.Conn) {
 		}
 	}()
 
+	for {
+		select {
+		case <-pCtx.Done():
+			return
+		default:
+
+		}
+
+		if err := s.process(conn); err != nil {
+			return
+		}
+	}
+
+}
+
+func (s *server) process(conn net.Conn) error {
 	//1.提取数据
 	msg, err := s.extractMessage(conn)
+	// 这里为什么不用io.EOF 可以见：https://blog.csdn.net/aixinaxc/article/details/89282364
 	if err != nil {
 		s.opts.Logger.Errorf(context.TODO(), "extractMessage error:%v", err.Error())
-		return
+		return err
 	}
 
 	// 2.提取metadata
@@ -266,7 +284,7 @@ func (s *server) process(conn net.Conn) {
 	if len(msg.MetaData) != 0 {
 		if err = serialize.GetSerialize(s.opts.Serialize).Unmarshal(msg.MetaData, &metaData); err != nil {
 			s.wireErr(context.TODO(), conn, srpcerr.NewError(srpcerr.UnKnowErr, err.Error()))
-			return
+			return nil
 		}
 	}
 	ctx := metadata.WithServerMetadata(context.Background(), metaData.Data)
@@ -275,13 +293,13 @@ func (s *server) process(conn net.Conn) {
 	srv, ok := s.serviceMap[msg.ServiceName]
 	if !ok {
 		s.wireErr(ctx, conn, srpcerr.ServiceNotExistErr)
-		return
+		return nil
 	}
 
 	methodHandler, ok := srv.methods[msg.ServiceMethod]
 	if !ok {
 		s.wireErr(ctx, conn, srpcerr.MethodNotExistErr)
-		return
+		return nil
 	}
 
 	// 3.执行具体方法（包括注册的中间件）
@@ -295,11 +313,11 @@ func (s *server) process(conn net.Conn) {
 	if err != nil {
 		if err, ok := err.(*srpcerr.Error); ok {
 			s.wireErr(ctx, conn, err)
-			return
+			return nil
 		}
 
 		s.wireErr(ctx, conn, srpcerr.NewError(srpcerr.UnKnowErr, err.Error()))
-		return
+		return nil
 	}
 
 	raw, _ := serialize.GetSerialize(s.opts.Serialize).Marshal(resp)
@@ -310,11 +328,11 @@ func (s *server) process(conn net.Conn) {
 			raw, err = s.codec.Encode(codec.GeneralMsgType, codec.CompressTypeNot, uint64(time.Now().Unix()), []byte(""), []byte(""), []byte(""), resp)
 			if err != nil {
 				s.opts.Logger.Errorf(ctx, "write error:%v", err.Error())
-				return
+				return nil
 			}
 			if err = util.Write(conn, raw); err != nil {
 				s.opts.Logger.Errorf(ctx, "write error:%v", err.Error())
-				return
+				return nil
 			}
 		}
 	}
@@ -324,19 +342,12 @@ func (s *server) process(conn net.Conn) {
 		s.opts.Logger.Errorf(ctx, "write error:%v", err.Error())
 	}
 
-	return
+	return nil
 }
 
 // extractMessage 提取message内容
 func (s *server) extractMessage(conn net.Conn) (*codec.Message, error) {
-	// 1.设置读取超时时间
-	if s.opts.ReadTimeout > 0 {
-		if err := conn.SetReadDeadline(time.Now().Add(s.opts.ReadTimeout)); err != nil {
-			return nil, err
-		}
-	}
-
-	// 2.读取头部内容
+	// 1.读取头部内容
 	headerData := make([]byte, s.codec.GetHeaderLength())
 	if err := util.ReadFixData(conn, headerData); err != nil {
 		return nil, err
@@ -347,7 +358,7 @@ func (s *server) extractMessage(conn net.Conn) (*codec.Message, error) {
 		return nil, err
 	}
 
-	// 3.读取message内容
+	// 2.读取message内容
 	body := make([]byte, s.codec.GetBodyLength(header))
 	if err = util.ReadFixData(conn, body); err != nil {
 		return nil, err

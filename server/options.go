@@ -1,8 +1,9 @@
 package server
 
 import (
-	"github.com/wsx864321/srpc/logger"
 	"time"
+
+	"github.com/wsx864321/srpc/logger"
 
 	"github.com/wsx864321/srpc/discov/etcd"
 
@@ -17,7 +18,6 @@ var defaultOptions = &Options{
 	Port:         9557,
 	Network:      transport.NetworkTCP,
 	Serialize:    serialize.SerializeTypeJson,
-	ReadTimeout:  1 * time.Second,
 	Timeout:      5 * time.Second,
 	WriteTimeout: 1 * time.Second,
 	Discovery:    etcd.NewETCDRegister(),
@@ -29,7 +29,6 @@ type Options struct {
 	Port         int
 	Network      transport.Transport
 	Serialize    serialize.SerializeType
-	ReadTimeout  time.Duration
 	Timeout      time.Duration
 	WriteTimeout time.Duration
 	Discovery    discov.Discovery
@@ -59,12 +58,6 @@ func WithNetWork(network transport.Transport) Option {
 func WithSerialize(serializeType serialize.SerializeType) Option {
 	return func(opt *Options) {
 		opt.Serialize = serializeType
-	}
-}
-
-func WithReadTimeout(duration time.Duration) Option {
-	return func(opt *Options) {
-		opt.ReadTimeout = duration
 	}
 }
 

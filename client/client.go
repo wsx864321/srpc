@@ -148,3 +148,7 @@ func (c *Client) extractMessage(conn net.Conn) (*codec.Message, error) {
 
 	return c.codec.DecodeBody(header, body)
 }
+
+func (c *Client) Close() {
+	c.opts.pool.CloseAll()
+}
