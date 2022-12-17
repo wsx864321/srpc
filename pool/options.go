@@ -14,6 +14,7 @@ var defaultOptions = &Options{
 	close: func(conn net.Conn) error {
 		return conn.Close()
 	},
+	ping:        nil,
 	idleTimeout: 1 * time.Minute,
 	network:     "tcp",
 	address:     "127.0.0.1:7777",

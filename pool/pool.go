@@ -28,16 +28,30 @@ var (
 type Pool struct {
 	opts  *Options
 	conns *sync.Map
+	mu    *sync.Mutex
 }
 
 // NewPool todo 增加异步client链接检查，防止下游节点因为服务下线而连接还保存在map中造成缓慢的内存泄露和fd的浪费
 func NewPool(opts ...Option) *Pool {
+	opt := NewOptions(opts...)
+	if !(opt.initialCap <= opt.maxCap) {
+		panic("invalid capacity settings")
+	}
+	if opt.factory == nil {
+		panic("invalid factory func settings")
+	}
+	if opt.close == nil {
+		panic("invalid close func settings")
+	}
+
 	return &Pool{
-		opts:  NewOptions(opts...),
+		opts:  opt,
 		conns: &sync.Map{},
+		mu:    &sync.Mutex{},
 	}
 }
 
+// Get todo 第一次初始化，并发获取可能会多次初始化,需要修复
 func (p *Pool) Get(network, address string) (net.Conn, error) {
 	if value, ok := p.conns.Load(p.getKey(network, address)); ok {
 		if cp, ok := value.(*channelPool); ok {
@@ -72,6 +86,16 @@ func (p *Pool) Put(network, address string, conn net.Conn) {
 			cp.Put(conn)
 		}
 	}
+}
+
+func (p *Pool) CloseAll() {
+	p.conns.Range(func(key, value interface{}) bool {
+		if cp, ok := value.(*channelPool); ok {
+			cp.Release()
+		}
+
+		return true
+	})
 }
 
 func (p *Pool) getKey(network, address string) string {

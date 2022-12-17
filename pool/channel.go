@@ -31,16 +31,6 @@ type idleConn struct {
 // NewChannelPool 初始化连接
 func NewChannelPool(opts ...Option) (*channelPool, error) {
 	opt := NewOptions(opts...)
-	if !(opt.initialCap <= opt.maxCap) {
-		return nil, errors.New("invalid capacity settings")
-	}
-	if opt.factory == nil {
-		return nil, errors.New("invalid factory func settings")
-	}
-	if opt.close == nil {
-		return nil, errors.New("invalid close func settings")
-	}
-
 	c := &channelPool{
 		Options:      opt,
 		mu:           sync.RWMutex{},
@@ -69,7 +59,7 @@ func (c *channelPool) getConns() chan *idleConn {
 }
 
 // Get 从pool中取一个连接 todo 增加超时控制
-func (c *channelPool) Get(address, network string) (net.Conn, error) {
+func (c *channelPool) Get(network, address string) (net.Conn, error) {
 	conns := c.getConns()
 	if conns == nil {
 		return nil, ErrClosed

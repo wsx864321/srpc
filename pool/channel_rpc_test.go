@@ -44,7 +44,7 @@ func TestPool_Get_Impl(t *testing.T) {
 	p, _ := newChannelPool()
 	defer p.Release()
 
-	conn, err := p.Get(address, network)
+	conn, err := p.Get(network, address)
 	if err != nil {
 		t.Errorf("Get error: %s", err)
 	}
@@ -56,7 +56,7 @@ func TestPool_Get(t *testing.T) {
 	p, _ := newChannelPool()
 	defer p.Release()
 
-	_, err := p.Get(address, network)
+	_, err := p.Get(network, address)
 	if err != nil {
 		t.Errorf("Get error: %s", err)
 	}
@@ -73,7 +73,7 @@ func TestPool_Get(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, err := p.Get(address, network)
+			_, err := p.Get(network, address)
 			if err != nil {
 				t.Errorf("Get error: %s", err)
 			}
@@ -86,7 +86,7 @@ func TestPool_Get(t *testing.T) {
 			(InitialCap - 1), p.Len())
 	}
 
-	_, err = p.Get(address, network)
+	_, err = p.Get(network, address)
 	if err != ErrMaxActiveConnReached {
 		t.Errorf("Get error: %s", err)
 	}
@@ -103,7 +103,7 @@ func TestPool_Put(t *testing.T) {
 	// get/create from the pool
 	conns := make([]net.Conn, MaximumCap)
 	for i := 0; i < MaximumCap; i++ {
-		conn, _ := p.Get(address, network)
+		conn, _ := p.Get(network, address)
 		conns[i] = conn
 	}
 
@@ -147,7 +147,7 @@ func TestPool_Close(t *testing.T) {
 		t.Errorf("Close error, factory should be nil")
 	}
 
-	_, err := p.Get(address, network)
+	_, err := p.Get(network, address)
 	if err == nil {
 		t.Errorf("Close error, get conn should return an error")
 	}
@@ -167,7 +167,7 @@ func TestPoolConcurrent(t *testing.T) {
 
 	for i := 0; i < MaximumCap; i++ {
 		go func() {
-			conn, _ := p.Get(address, network)
+			conn, _ := p.Get(network, address)
 
 			pipe <- conn
 		}()
@@ -192,7 +192,7 @@ func TestPoolConcurrent2(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			wg.Add(1)
 			go func(i int) {
-				conn, _ := p.Get(address, network)
+				conn, _ := p.Get(network, address)
 				time.Sleep(time.Millisecond * time.Duration(rand.Intn(100)))
 				p.Close(conn)
 				wg.Done()
@@ -203,7 +203,7 @@ func TestPoolConcurrent2(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func(i int) {
-			conn, _ := p.Get(address, network)
+			conn, _ := p.Get(network, address)
 			time.Sleep(time.Millisecond * time.Duration(rand.Intn(100)))
 			p.Close(conn)
 			wg.Done()

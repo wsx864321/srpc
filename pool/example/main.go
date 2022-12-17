@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/wsx864321/srpc/pool"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/wsx864321/srpc/pool"
 )
 
 const addr string = "127.0.0.1:7777"
@@ -32,7 +33,7 @@ func client() {
 	}
 
 	//从连接池中取得一个连接
-	v, err := p.Get(addr, "tcp")
+	v, err := p.Get("tcp", addr)
 
 	//do something
 	//conn=v.(net.Conn)
