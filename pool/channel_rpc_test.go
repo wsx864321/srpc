@@ -137,7 +137,7 @@ func TestPool_Close(t *testing.T) {
 	// now close it and test all cases we are expecting.
 	p.Release()
 
-	c := p.(*channelPool)
+	c := p
 
 	if c.conns != nil {
 		t.Errorf("Close error, conns channel should be nil")
@@ -232,7 +232,7 @@ func TestPoolConcurrent2(t *testing.T) {
 //	wg.Wait()
 //}
 
-func newChannelPool() (Pool, error) {
+func newChannelPool() (*channelPool, error) {
 	return NewChannelPool(WithInitialCap(InitialCap), WithMaxCap(MaximumCap), WithFactory(factory), WithClose(closeFac), WithIdleTimeout(time.Second*20))
 }
 
