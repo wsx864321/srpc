@@ -13,7 +13,7 @@ const (
 	sprcTimeout = "sprc-timeout"
 )
 
-// ClientTimeoutInterceptor 客户端级联超市控制
+// ClientTimeoutInterceptor 客户端级联超时控制
 func ClientTimeoutInterceptor() interceptor.ClientInterceptor {
 	return func(ctx context.Context, req, resp interface{}, h interceptor.Invoker) error {
 		if deadline, ok := ctx.Deadline(); ok {
