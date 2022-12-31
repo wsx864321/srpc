@@ -1,6 +1,7 @@
 package pool
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -39,6 +40,11 @@ func NewChannelPool(opts ...Option) (*channelPool, error) {
 	}
 
 	for i := 0; i < opt.initialCap; i++ {
+		if c.factory == nil {
+			fmt.Println(0)
+			fmt.Println(opts)
+			fmt.Println(NewOptions(opts...))
+		}
 		conn, err := c.factory(opt.network, opt.address, opt.dailTimeout)
 		if err != nil {
 			c.Release()
@@ -59,13 +65,15 @@ func (c *channelPool) getConns() chan *idleConn {
 }
 
 // Get 从pool中取一个连接 todo 增加超时控制
-func (c *channelPool) Get(network, address string) (net.Conn, error) {
+func (c *channelPool) Get(ctx context.Context, network, address string) (net.Conn, error) {
 	conns := c.getConns()
 	if conns == nil {
 		return nil, ErrClosed
 	}
 	for {
 		select {
+		case <-ctx.Done():
+			return nil, ErrGetTimeout
 		case wrapConn := <-conns:
 			if wrapConn == nil {
 				return nil, ErrClosed
@@ -91,7 +99,32 @@ func (c *channelPool) Get(network, address string) (net.Conn, error) {
 			defer c.mu.Unlock()
 
 			if c.openingConns >= c.maxCap {
-				return nil, ErrMaxActiveConnReached
+				for {
+					select {
+					case <-ctx.Done():
+						return nil, ErrGetTimeout
+					case wrapConn := <-conns:
+						if wrapConn == nil {
+							return nil, ErrClosed
+						}
+						//判断是否超时，超时则丢弃
+						if timeout := c.idleTimeout; timeout > 0 {
+							if wrapConn.t.Add(timeout).Before(time.Now()) {
+								//丢弃并关闭该连接
+								c.Close(wrapConn.conn)
+								continue
+							}
+						}
+						//判断是否失效，失效则丢弃，如果用户没有设定 ping 方法，就不检查
+						if c.ping != nil {
+							if err := c.Ping(wrapConn.conn); err != nil {
+								c.Close(wrapConn.conn)
+								continue
+							}
+						}
+						return wrapConn.conn, nil
+					}
+				}
 			}
 
 			conn, err := c.factory(network, address, c.dailTimeout)

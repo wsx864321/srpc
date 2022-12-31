@@ -8,11 +8,12 @@ import (
 
 var (
 	defaultOption = Options{
-		endpoints:              []string{"127.0.0.1:2379"},
-		dialTimeout:            10 * time.Second,
-		syncFlushCacheInterval: 10 * time.Second,
-		keepAliveInterval:      10,
-		logger:                 logger.NewSweetLog(),
+		endpoints:                          []string{"127.0.0.1:2379"},
+		dialTimeout:                        10 * time.Second,
+		syncFlushCacheInterval:             10 * time.Second,
+		keepAliveInterval:                  10,
+		registerServiceOrKeepAliveInterval: 50 * time.Millisecond,
+		logger:                             logger.NewSweetLog(),
 	}
 )
 

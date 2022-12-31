@@ -48,7 +48,7 @@ func (c *Client) Call(ctx context.Context, methodName string, req, resp interfac
 	}
 
 	// 3.从连接池获取链接
-	conn, err := c.opts.pool.Get(endpoint.Network, endpoint.GetAddr())
+	conn, err := c.opts.pool.Get(ctx, endpoint.Network, endpoint.GetAddr())
 	if err != nil {
 		return err
 	}

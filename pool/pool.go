@@ -1,6 +1,7 @@
 package pool
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -9,7 +10,8 @@ import (
 
 var (
 	//ErrClosed 连接池已经关闭Error
-	ErrClosed = errors.New("pool is closed")
+	ErrClosed     = errors.New("pool is closed")
+	ErrGetTimeout = errors.New("poo get client timeout")
 )
 
 // Pool 基本方法
@@ -51,11 +53,21 @@ func NewPool(opts ...Option) *Pool {
 	}
 }
 
-// Get todo 第一次初始化，并发获取可能会多次初始化,需要修复
-func (p *Pool) Get(network, address string) (net.Conn, error) {
+// Get ...
+func (p *Pool) Get(ctx context.Context, network, address string) (net.Conn, error) {
 	if value, ok := p.conns.Load(p.getKey(network, address)); ok {
 		if cp, ok := value.(*channelPool); ok {
-			conn, err := cp.Get(network, address)
+			conn, err := cp.Get(ctx, network, address)
+			return conn, err
+		}
+	}
+
+	// check - lock -check 单例
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if value, ok := p.conns.Load(p.getKey(network, address)); ok {
+		if cp, ok := value.(*channelPool); ok {
+			conn, err := cp.Get(ctx, network, address)
 			return conn, err
 		}
 	}
@@ -77,7 +89,7 @@ func (p *Pool) Get(network, address string) (net.Conn, error) {
 
 	p.conns.Store(p.getKey(network, address), cp)
 
-	return cp.Get(network, address)
+	return cp.Get(ctx, network, address)
 }
 
 func (p *Pool) Put(network, address string, conn net.Conn) {
