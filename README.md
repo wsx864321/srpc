@@ -51,6 +51,8 @@ but，srpc是一个学习RPC框架的“好轮子”（王婆卖瓜自卖自夸�
 - [ ] Failover
 - [ ] Failtry
 - [ ] Failbackup
+### 超时控制
+- [X] 级联超时控制
 
 ## 服务端
 
