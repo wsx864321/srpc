@@ -207,7 +207,7 @@ func (r *Register) GetService(ctx context.Context, name string) (*discov.Service
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	// check lock check 单例
+	// check lock check 防止大量并发进来，unlock后，大量请求etcd
 	allServices = r.getDownServices()
 	if val, ok := allServices[name]; ok {
 		return val, nil

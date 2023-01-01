@@ -36,7 +36,7 @@ func main() {
 	cli := client.NewClient(
 		client.WithServiceName("helloworld"),
 		client.WithDiscovery(etcd.NewETCDRegister(etcd.WithEndpoints([]string{"127.0.0.1:2371"}))),
-		client.WithPool(pool.NewPool(pool.WithInitialCap(10), pool.WithMaxCap(100))),
+		client.WithPool(pool.NewPool(pool.WithInitialCap(1000), pool.WithMaxCap(1000))),
 		client.WithReadTimeout(5*time.Second),
 		client.WithWriteTimeout(5*time.Second),
 		client.WithInterceptors([]interceptor.ClientInterceptor{clientinterceptor.ClientTraceInterceptor(), clientinterceptor.ClientTimeoutInterceptor()}...),
@@ -56,7 +56,7 @@ func main() {
 			err := cli.Call(ctx, "SayHello", req, &resp)
 			if err != nil {
 				count++
-				fmt.Println(err)
+				//fmt.Println(err)
 			}
 		}()
 

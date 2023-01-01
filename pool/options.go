@@ -18,7 +18,7 @@ var defaultOptions = &Options{
 	idleTimeout: 1 * time.Minute,
 	network:     "tcp",
 	address:     "127.0.0.1:7777",
-	dailTimeout: 100 * time.Millisecond,
+	dailTimeout: 1000 * time.Millisecond,
 }
 
 type Options struct {
