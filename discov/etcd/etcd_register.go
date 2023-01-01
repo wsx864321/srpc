@@ -207,6 +207,12 @@ func (r *Register) GetService(ctx context.Context, name string) (*discov.Service
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
+	// check lock check 单例
+	allServices = r.getDownServices()
+	if val, ok := allServices[name]; ok {
+		return val, nil
+	}
+
 	key := r.getEtcdRegisterPrefixKey(name)
 	getResp, err := r.cli.Get(ctx, key, clientv3.WithPrefix())
 	if err != nil {

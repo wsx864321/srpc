@@ -38,7 +38,7 @@ func main() {
 				etcd.WithEndpoints([]string{"127.0.0.1:2371"}),
 			),
 		),
-		client.WithInterceptors([]interceptor.ClientInterceptor{clientinterceptor.ClientTraceInterceptor()}...),
+		client.WithInterceptors([]interceptor.ClientInterceptor{clientinterceptor.ClientTraceInterceptor(), clientinterceptor.ClientTimeoutInterceptor()}...),
 		client.WithReadTimeout(10*time.Second),
 		client.WithWriteTimeout(10*time.Second),
 	)

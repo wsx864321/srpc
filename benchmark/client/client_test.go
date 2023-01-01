@@ -7,12 +7,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/wsx864321/srpc/interceptor"
+	"github.com/wsx864321/srpc/interceptor/clientinterceptor"
+	strace "github.com/wsx864321/srpc/trace"
+
 	"github.com/wsx864321/srpc/client"
 	"github.com/wsx864321/srpc/discov/etcd"
 	"github.com/wsx864321/srpc/pool"
 )
 
 func BenchmarkClient(b *testing.B) {
+	strace.StartAgent(strace.WithServiceName("helloworld-client"))
+	defer strace.StopAgent()
+
 	req := &HelloWorldReq{
 		Name: "wsx",
 	}
@@ -20,9 +27,10 @@ func BenchmarkClient(b *testing.B) {
 	cli := client.NewClient(
 		client.WithServiceName("helloworld"),
 		client.WithDiscovery(etcd.NewETCDRegister(etcd.WithEndpoints([]string{"127.0.0.1:2371"}))),
-		client.WithPool(pool.NewPool(pool.WithInitialCap(10), pool.WithMaxCap(1000))),
-		client.WithReadTimeout(3*time.Second),
-		client.WithWriteTimeout(3*time.Second),
+		client.WithPool(pool.NewPool(pool.WithInitialCap(10), pool.WithMaxCap(100))),
+		client.WithReadTimeout(5*time.Second),
+		client.WithWriteTimeout(5*time.Second),
+		client.WithInterceptors([]interceptor.ClientInterceptor{clientinterceptor.ClientTraceInterceptor(), clientinterceptor.ClientTimeoutInterceptor()}...),
 	)
 	defer cli.Close()
 
@@ -35,11 +43,11 @@ func BenchmarkClient(b *testing.B) {
 		go func() {
 			defer wg.Done()
 			var resp HelloWorldResp
-			ctx, _ := context.WithTimeout(context.TODO(), 20*time.Second)
+			ctx, _ := context.WithTimeout(context.TODO(), 4*time.Second)
 			err := cli.Call(ctx, "SayHello", req, &resp)
 			if err != nil {
 				count++
-				//fmt.Println(err)
+				fmt.Println(err)
 			}
 		}()
 

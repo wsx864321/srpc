@@ -17,6 +17,7 @@ type HelloWorldResp struct {
 }
 
 func (h *HelloWorld) SayHello(ctx context.Context, req *HelloWorldReq) (*HelloWorldResp, error) {
+	//time.Sleep(3 * time.Second)
 	return &HelloWorldResp{
 		Msg: fmt.Sprintf("%s say hello", req.Name),
 	}, nil

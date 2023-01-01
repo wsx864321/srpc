@@ -58,10 +58,7 @@ func NewChannelPool(opts ...Option) (*channelPool, error) {
 
 // getConns 获取所有连接
 func (c *channelPool) getConns() chan *idleConn {
-	c.mu.Lock()
-	conns := c.conns
-	c.mu.Unlock()
-	return conns
+	return c.conns
 }
 
 // Get 从pool中取一个连接 todo 增加超时控制
@@ -95,8 +92,6 @@ func (c *channelPool) Get(ctx context.Context, network, address string) (net.Con
 			}
 			return wrapConn.conn, nil
 		default:
-			c.mu.Lock()
-			defer c.mu.Unlock()
 
 			if c.openingConns >= c.maxCap {
 				for {
@@ -132,6 +127,9 @@ func (c *channelPool) Get(ctx context.Context, network, address string) (net.Con
 				return nil, err
 			}
 
+			c.mu.Lock()
+			defer c.mu.Unlock()
+
 			c.openingConns++
 			return conn, nil
 		}
@@ -144,19 +142,14 @@ func (c *channelPool) Put(conn net.Conn) error {
 		return errors.New("connection is nil. rejecting")
 	}
 
-	c.mu.Lock()
-
 	if c.conns == nil {
-		c.mu.Unlock()
 		return c.Close(conn)
 	}
 
 	select {
 	case c.conns <- &idleConn{conn: conn, t: time.Now()}:
-		c.mu.Unlock()
 		return nil
 	default:
-		c.mu.Unlock()
 		//连接池已满，直接关闭该连接
 		return c.Close(conn)
 	}
@@ -168,12 +161,14 @@ func (c *channelPool) Close(conn net.Conn) error {
 	if conn == nil {
 		return errors.New("connection is nil. rejecting")
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
+
 	if c.close == nil {
 		return nil
 	}
+	c.mu.Lock()
 	c.openingConns--
+	c.mu.Unlock()
+
 	return c.close(conn)
 }
 

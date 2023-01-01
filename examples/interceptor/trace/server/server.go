@@ -21,6 +21,6 @@ func main() {
 			),
 		),
 	)
-	s.RegisterService("helloworld", &HelloWorld{}, []interceptor.ServerInterceptor{serverinterceptor.ServerTraceInterceptor()}...)
+	s.RegisterService("helloworld", &HelloWorld{}, []interceptor.ServerInterceptor{serverinterceptor.ServerTraceInterceptor(), serverinterceptor.ServerTimeoutInterceptor()}...)
 	s.Start()
 }
