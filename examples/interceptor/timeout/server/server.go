@@ -16,7 +16,6 @@ func main() {
 			),
 		),
 	)
-	s.RegisterService("helloworld", &HelloWorld{})
-	s.RegisterMiddleware(serverinterceptor.ServerTimeoutInterceptor())
+	s.RegisterService("helloworld", &HelloWorld{}, serverinterceptor.ServerTimeoutInterceptor())
 	s.Start()
 }

@@ -28,17 +28,15 @@ type handler func(ctx context.Context, body []byte) (interface{}, error)
 type Server interface {
 	Start()
 	Stop()
-	RegisterService(serName string, service interface{})
-	RegisterMiddleware(interceptors ...interceptor.ServerInterceptor)
+	RegisterService(serName string, srv interface{}, interceptors ...interceptor.ServerInterceptor)
 }
 
 type server struct {
-	opts         *Options
-	codec        *codec.Codec
-	ctx          context.Context    // Each service is managed in one context
-	cancel       context.CancelFunc // controller of context
-	interceptors []interceptor.ServerInterceptor
-	serviceMap   map[string]*service
+	opts       *Options
+	codec      *codec.Codec
+	ctx        context.Context    // Each service is managed in one context
+	cancel     context.CancelFunc // controller of context
+	serviceMap map[string]*service
 }
 
 type service struct {
@@ -50,22 +48,16 @@ type service struct {
 func NewServer(opts ...Option) Server {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &server{
-		opts:         NewOptions(opts...),
-		codec:        codec.NewCodec(),
-		ctx:          ctx,
-		cancel:       cancel,
-		interceptors: make([]interceptor.ServerInterceptor, 0),
-		serviceMap:   make(map[string]*service),
+		opts:       NewOptions(opts...),
+		codec:      codec.NewCodec(),
+		ctx:        ctx,
+		cancel:     cancel,
+		serviceMap: make(map[string]*service),
 	}
 }
 
-// RegisterMiddleware 注册中间件
-func (s *server) RegisterMiddleware(interceptors ...interceptor.ServerInterceptor) {
-	s.interceptors = append(s.interceptors, interceptors...)
-}
-
 // RegisterService 注册服务
-func (s *server) RegisterService(serName string, srv interface{}) {
+func (s *server) RegisterService(serName string, srv interface{}, interceptors ...interceptor.ServerInterceptor) {
 	svrType := reflect.TypeOf(srv)
 	svrValue := reflect.ValueOf(srv)
 
@@ -92,7 +84,7 @@ func (s *server) RegisterService(serName string, srv interface{}) {
 
 			}
 
-			return interceptor.ServerIntercept(ctx, req, s.interceptors, h)
+			return interceptor.ServerIntercept(ctx, req, interceptors, h)
 		}
 		methods[method.Name] = methodHandler
 	}
