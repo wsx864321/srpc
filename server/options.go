@@ -14,74 +14,74 @@ import (
 )
 
 var defaultOptions = &Options{
-	IP:           "0.0.0.0",
-	Port:         9557,
-	Network:      transport.NetworkTCP,
-	Serialize:    serialize.SerializeTypeJson,
-	Timeout:      5 * time.Second,
-	WriteTimeout: 1 * time.Second,
-	Discovery:    etcd.NewETCDRegister(),
-	Logger:       logger.NewSweetLog(),
+	ip:           "0.0.0.0",
+	port:         9557,
+	network:      transport.NetworkTCP,
+	serialize:    serialize.SerializeTypeJson,
+	timeout:      5 * time.Second,
+	writeTimeout: 1 * time.Second,
+	discovery:    etcd.NewETCDRegister(),
+	logger:       logger.NewSweetLog(),
 }
 
 type Options struct {
-	IP           string
-	Port         int
-	Network      transport.Transport
-	Serialize    serialize.SerializeType
-	Timeout      time.Duration
-	WriteTimeout time.Duration
-	Discovery    discov.Discovery
-	Logger       logger.Log
+	ip           string
+	port         int
+	network      transport.Transport
+	serialize    serialize.SerializeType
+	timeout      time.Duration
+	writeTimeout time.Duration
+	discovery    discov.Discovery
+	logger       logger.Log
 }
 
 type Option func(opt *Options)
 
 func WithIP(ip string) Option {
 	return func(opt *Options) {
-		opt.IP = ip
+		opt.ip = ip
 	}
 }
 
 func WithPort(port int) Option {
 	return func(opt *Options) {
-		opt.Port = port
+		opt.port = port
 	}
 }
 
 func WithNetWork(network transport.Transport) Option {
 	return func(opt *Options) {
-		opt.Network = network
+		opt.network = network
 	}
 }
 
 func WithSerialize(serializeType serialize.SerializeType) Option {
 	return func(opt *Options) {
-		opt.Serialize = serializeType
+		opt.serialize = serializeType
 	}
 }
 
 func WithTimeOut(duration time.Duration) Option {
 	return func(opt *Options) {
-		opt.Timeout = duration
+		opt.timeout = duration
 	}
 }
 
 func WithWriteTimeout(duration time.Duration) Option {
 	return func(opt *Options) {
-		opt.WriteTimeout = duration
+		opt.writeTimeout = duration
 	}
 }
 
 func WithDiscovery(discovery discov.Discovery) Option {
 	return func(opt *Options) {
-		opt.Discovery = discovery
+		opt.discovery = discovery
 	}
 }
 
 func WithLogger(log logger.Log) Option {
 	return func(opt *Options) {
-		opt.Logger = log
+		opt.logger = log
 	}
 }
 

@@ -70,7 +70,7 @@ func (s *server) RegisterService(serName string, srv interface{}, interceptors .
 
 		methodHandler := func(ctx context.Context, body []byte) (interface{}, error) {
 			req := reflect.New(method.Type.In(2).Elem()).Interface()
-			if err := serialize.GetSerialize(s.opts.Serialize).Unmarshal(body, req); err != nil {
+			if err := serialize.GetSerialize(s.opts.serialize).Unmarshal(body, req); err != nil {
 				return nil, err
 			}
 
@@ -110,7 +110,7 @@ func (s *server) checkMethod(methodName string, methodType reflect.Type) error {
 		return fmt.Errorf("method %s invalid, first param is not context", methodName)
 	}
 
-	if s.opts.Serialize == serialize.SerializeTypeProto {
+	if s.opts.serialize == serialize.SerializeTypeProto {
 		var p *proto.Message
 		if !methodType.In(2).Implements(reflect.TypeOf(p).Elem()) {
 			return fmt.Errorf("method %s invalid, second param is not proto.Message", methodName)
@@ -121,7 +121,7 @@ func (s *server) checkMethod(methodName string, methodType reflect.Type) error {
 		}
 	}
 
-	if s.opts.Serialize == serialize.SerializeTypeProto {
+	if s.opts.serialize == serialize.SerializeTypeProto {
 		var p *proto.Message
 		if !methodType.Out(0).Implements(reflect.TypeOf(p).Elem()) {
 			return fmt.Errorf("method %s invalid, second param is not proto.Message", methodName)
@@ -143,13 +143,13 @@ func (s *server) checkMethod(methodName string, methodType reflect.Type) error {
 // Start 启动server
 func (s *server) Start() {
 	// 获取listener
-	serverTransport := transport.GetTransport(s.opts.Network)
-	ln, err := serverTransport.Listen(fmt.Sprintf("%v:%v", s.opts.IP, s.opts.Port))
+	serverTransport := transport.GetTransport(s.opts.network)
+	ln, err := serverTransport.Listen(fmt.Sprintf("%v:%v", s.opts.ip, s.opts.port))
 	if err != nil {
 		panic(err)
 	}
 
-	s.opts.Logger.Infof(context.TODO(), "%s server start at %s", s.opts.Network, fmt.Sprintf("%v:%v", s.opts.IP, s.opts.Port))
+	s.opts.logger.Infof(context.TODO(), "%s server start at %s", s.opts.network, fmt.Sprintf("%v:%v", s.opts.ip, s.opts.port))
 
 	// accept请求
 	go s.run(ln)
@@ -159,15 +159,15 @@ func (s *server) Start() {
 
 	// 注册服务
 	for name := range s.serviceMap {
-		s.opts.Discovery.Register(context.TODO(), &discov.Service{
+		s.opts.discovery.Register(context.TODO(), &discov.Service{
 			Name: name,
 			Endpoints: []*discov.Endpoint{
 				{
 					ServiceName: name,
-					IP:          s.opts.IP,
-					Port:        s.opts.Port,
-					Network:     string(s.opts.Network),
-					Serialize:   string(s.opts.Serialize),
+					IP:          s.opts.ip,
+					Port:        s.opts.port,
+					Network:     string(s.opts.network),
+					Serialize:   string(s.opts.serialize),
 					Enable:      true,
 				},
 			},
@@ -193,13 +193,13 @@ func (s *server) Start() {
 func (s *server) Stop() {
 	// 服务取消注册
 	for name := range s.serviceMap {
-		s.opts.Discovery.UnRegister(context.TODO(), &discov.Service{
+		s.opts.discovery.UnRegister(context.TODO(), &discov.Service{
 			Name: name,
 			Endpoints: []*discov.Endpoint{
 				{
 					ServiceName: name,
-					IP:          s.opts.IP,
-					Port:        s.opts.Port,
+					IP:          s.opts.ip,
+					Port:        s.opts.port,
 					Enable:      true,
 				},
 			},
@@ -214,7 +214,7 @@ func (s *server) run(ln net.Listener) {
 		if r := recover(); r != nil {
 			stack := make([]byte, 4096)
 			stack = stack[:runtime.Stack(stack, false)]
-			s.opts.Logger.Errorf(context.TODO(), "err:%v\n.stack:%v", r, string(stack))
+			s.opts.logger.Errorf(context.TODO(), "err:%v\n.stack:%v", r, string(stack))
 		}
 	}()
 
@@ -225,7 +225,7 @@ func (s *server) run(ln net.Listener) {
 		default:
 			accept, err := ln.Accept()
 			if err != nil {
-				s.opts.Logger.Errorf(s.ctx, "err:%v", err)
+				s.opts.logger.Errorf(s.ctx, "err:%v", err)
 				continue
 			}
 
@@ -243,7 +243,7 @@ func (s *server) handleConn(pCtx context.Context, conn net.Conn) {
 		if r := recover(); r != nil {
 			stack := make([]byte, 4096)
 			stack = stack[:runtime.Stack(stack, false)]
-			s.opts.Logger.Errorf(context.TODO(), "\nerr:%v\nstack:%v", r, string(stack))
+			s.opts.logger.Errorf(context.TODO(), "\nerr:%v\nstack:%v", r, string(stack))
 		}
 	}()
 
@@ -273,7 +273,7 @@ func (s *server) process(conn net.Conn) error {
 	// 2.提取metadata
 	var metaData metadata.Metadata
 	if len(msg.MetaData) != 0 {
-		if err = serialize.GetSerialize(s.opts.Serialize).Unmarshal(msg.MetaData, &metaData); err != nil {
+		if err = serialize.GetSerialize(s.opts.serialize).Unmarshal(msg.MetaData, &metaData); err != nil {
 			s.wireErr(context.TODO(), conn, srpcerr.NewError(srpcerr.UnKnowErr, err.Error()))
 			return nil
 		}
@@ -294,9 +294,9 @@ func (s *server) process(conn net.Conn) error {
 	}
 
 	// 3.执行具体方法（包括注册的中间件）
-	if s.opts.Timeout > 0 {
+	if s.opts.timeout > 0 {
 		// 超时控制统一在timeoutInterceptor中间件中执行
-		ctx, _ = context.WithTimeout(ctx, s.opts.Timeout)
+		ctx, _ = context.WithTimeout(ctx, s.opts.timeout)
 	}
 	resp, err := methodHandler(ctx, msg.Payload)
 
@@ -311,18 +311,18 @@ func (s *server) process(conn net.Conn) error {
 		return nil
 	}
 
-	raw, _ := serialize.GetSerialize(s.opts.Serialize).Marshal(resp)
-	raw, _ = serialize.GetSerialize(s.opts.Serialize).Marshal(srpcerr.OkErr.WithData(raw))
-	if s.opts.WriteTimeout > 0 {
-		if err = conn.SetWriteDeadline(time.Now().Add(s.opts.WriteTimeout)); err != nil {
-			resp, _ := serialize.GetSerialize(s.opts.Serialize).Marshal(err)
+	raw, _ := serialize.GetSerialize(s.opts.serialize).Marshal(resp)
+	raw, _ = serialize.GetSerialize(s.opts.serialize).Marshal(srpcerr.OkErr.WithData(raw))
+	if s.opts.writeTimeout > 0 {
+		if err = conn.SetWriteDeadline(time.Now().Add(s.opts.writeTimeout)); err != nil {
+			resp, _ := serialize.GetSerialize(s.opts.serialize).Marshal(err)
 			raw, err = s.codec.Encode(codec.GeneralMsgType, codec.CompressTypeNot, uint64(time.Now().Unix()), []byte(""), []byte(""), []byte(""), resp)
 			if err != nil {
-				s.opts.Logger.Errorf(ctx, "write error:%v", err.Error())
+				s.opts.logger.Errorf(ctx, "write error:%v", err.Error())
 				return nil
 			}
 			if err = util.Write(conn, raw); err != nil {
-				s.opts.Logger.Errorf(ctx, "write error:%v", err.Error())
+				s.opts.logger.Errorf(ctx, "write error:%v", err.Error())
 				return nil
 			}
 		}
@@ -330,7 +330,7 @@ func (s *server) process(conn net.Conn) error {
 
 	raw, err = s.codec.Encode(codec.GeneralMsgType, codec.CompressTypeNot, uint64(time.Now().Unix()), []byte(""), []byte(""), []byte(""), raw)
 	if err = util.Write(conn, raw); err != nil {
-		s.opts.Logger.Errorf(ctx, "write error:%v", err.Error())
+		s.opts.logger.Errorf(ctx, "write error:%v", err.Error())
 	}
 
 	return nil
@@ -359,32 +359,32 @@ func (s *server) extractMessage(conn net.Conn) (*codec.Message, error) {
 }
 
 func (s *server) wireErr(ctx context.Context, conn net.Conn, err *srpcerr.Error) {
-	if s.opts.WriteTimeout > 0 {
-		if e := conn.SetWriteDeadline(time.Now().Add(s.opts.WriteTimeout)); e != nil {
-			s.opts.Logger.Errorf(context.TODO(), "SetWriteDeadline error:%v", err.Error())
-			resp, _ := serialize.GetSerialize(s.opts.Serialize).Marshal(err)
+	if s.opts.writeTimeout > 0 {
+		if e := conn.SetWriteDeadline(time.Now().Add(s.opts.writeTimeout)); e != nil {
+			s.opts.logger.Errorf(context.TODO(), "SetWriteDeadline error:%v", err.Error())
+			resp, _ := serialize.GetSerialize(s.opts.serialize).Marshal(err)
 			raw, e := s.codec.Encode(codec.GeneralMsgType, codec.CompressTypeNot, uint64(time.Now().Unix()), []byte(""), []byte(""), []byte(""), resp)
 			if e != nil {
-				s.opts.Logger.Errorf(ctx, "write error:%v", e.Error())
+				s.opts.logger.Errorf(ctx, "write error:%v", e.Error())
 				return
 			}
 
 			if e = util.Write(conn, raw); e != nil {
-				s.opts.Logger.Errorf(ctx, "write error:%v", e.Error())
+				s.opts.logger.Errorf(ctx, "write error:%v", e.Error())
 			}
 			return
 		}
 	}
 
-	resp, _ := serialize.GetSerialize(s.opts.Serialize).Marshal(err)
+	resp, _ := serialize.GetSerialize(s.opts.serialize).Marshal(err)
 	raw, e := s.codec.Encode(codec.GeneralMsgType, codec.CompressTypeNot, uint64(time.Now().Unix()), []byte(""), []byte(""), []byte(""), resp)
 	if e != nil {
-		s.opts.Logger.Errorf(ctx, "write error:%v", e.Error())
+		s.opts.logger.Errorf(ctx, "write error:%v", e.Error())
 		return
 	}
 
 	if e := util.Write(conn, raw); e != nil {
-		s.opts.Logger.Errorf(ctx, "write error:%v", e.Error())
+		s.opts.logger.Errorf(ctx, "write error:%v", e.Error())
 	}
 
 	return
