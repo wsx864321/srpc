@@ -2,6 +2,12 @@ package metadata
 
 import "context"
 
+const (
+	SRPCTimeout    = "srpc-timeout"
+	SRPCPeerAddr   = "srpc-peer-addr"
+	SPRCFullMethod = "srpc-full-method"
+)
+
 type clientMD struct{}
 type serverMD struct{}
 

@@ -8,7 +8,7 @@ type ServerInterceptor func(ctx context.Context, req interface{}, h Handler) (in
 
 type Handler func(ctx context.Context, req interface{}) (interface{}, error)
 
-type ClientInterceptor func(ctx context.Context, req, resp interface{}, h Invoker) error
+type ClientInterceptor func(ctx context.Context, method, target string, req, resp interface{}, h Invoker) error
 
 type Invoker func(ctx context.Context, req, resp interface{}) error
 
@@ -30,18 +30,18 @@ func getHandler(cur int, ceps []ServerInterceptor, h Handler) Handler {
 }
 
 // ClientIntercept client端拦截器
-func ClientIntercept(ctx context.Context, req, resp interface{}, ceps []ClientInterceptor, i Invoker) error {
+func ClientIntercept(ctx context.Context, method, target string, req, resp interface{}, ceps []ClientInterceptor, i Invoker) error {
 	if len(ceps) == 0 {
 		return i(ctx, req, resp)
 	}
-	return ceps[0](ctx, req, resp, getInvoker(0, ceps, i))
+	return ceps[0](ctx, method, target, req, resp, getInvoker(0, method, target, ceps, i))
 }
 
-func getInvoker(cur int, ceps []ClientInterceptor, i Invoker) Invoker {
+func getInvoker(cur int, method, target string, ceps []ClientInterceptor, i Invoker) Invoker {
 	if cur == len(ceps)-1 {
 		return i
 	}
 	return func(ctx context.Context, req, resp interface{}) error {
-		return ceps[cur+1](ctx, req, resp, getInvoker(cur+1, ceps, i))
+		return ceps[cur+1](ctx, method, target, req, resp, getInvoker(cur+1, method, target, ceps, i))
 	}
 }

@@ -10,15 +10,11 @@ import (
 	"github.com/wsx864321/srpc/metadata"
 )
 
-const (
-	sprcTimeout = "sprc-timeout"
-)
-
 // ServerTimeoutInterceptor 服务端超时控制，与client进行配合做到级联超时控制
 func ServerTimeoutInterceptor() interceptor.ServerInterceptor {
 	return func(ctx context.Context, req interface{}, h interceptor.Handler) (interface{}, error) {
 		md := metadata.ExtractServerMetadata(ctx)
-		if val, ok := md[sprcTimeout]; ok {
+		if val, ok := md[metadata.SRPCTimeout]; ok {
 			dur, _ := strconv.ParseInt(val, 10, 64)
 			ctx, _ = context.WithTimeout(ctx, time.Nanosecond*time.Duration(dur))
 		}

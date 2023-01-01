@@ -1,7 +1,5 @@
 package err
 
-import "fmt"
-
 const (
 	Ok = 0
 
@@ -25,8 +23,12 @@ func NewError(code int32, msg string) *Error {
 }
 
 func (e *Error) Error() string {
-	return fmt.Sprintf("type : server, code : %d, msg : %s", e.Code, e.Msg)
+	return e.Msg
 }
+
+//func (e *Error) Code() string {
+//	return fmt.Sprintf()
+//}
 
 func (e *Error) WithData(data []byte) *Error {
 	return &Error{
@@ -34,4 +36,15 @@ func (e *Error) WithData(data []byte) *Error {
 		Msg:  e.Msg,
 		Data: data,
 	}
+}
+
+func FromError(err error) (s *Error, ok bool) {
+	if err == nil {
+		return nil, true
+	}
+	if se, ok := err.(*Error); ok {
+		return se, ok
+	}
+
+	return nil, false
 }

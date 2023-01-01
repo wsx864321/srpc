@@ -2,7 +2,7 @@ package client
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/wsx864321/srpc/metadata"
 
@@ -55,6 +55,8 @@ func (c *Client) Call(ctx context.Context, methodName string, req, resp interfac
 	defer c.opts.pool.Put(endpoint.Network, endpoint.GetAddr(), conn)
 
 	// 4.组装invoke(数据序列化+数据编码+发送数据+接手数据)
+	fullMethod := fmt.Sprintf("%s/%s", c.opts.serviceName, methodName)
+	target := endpoint.GetAddr()
 	invoker := func(ctx context.Context, req, resp interface{}) error {
 		// 4.1 数据序列化
 		raw, err := serialize.GetSerialize(serialize.SerializeType(endpoint.Serialize)).Marshal(req)
@@ -63,6 +65,9 @@ func (c *Client) Call(ctx context.Context, methodName string, req, resp interfac
 		}
 		// 4.2 获取metadata（trace、级联超时、用户其它自定义的数据等等）
 		metaData := metadata.ExtractClientMetadata(ctx)
+		peerAddr := conn.LocalAddr().String()
+		metaData[metadata.SRPCPeerAddr] = peerAddr
+		metaData[metadata.SPRCFullMethod] = fullMethod
 		metaDataRaw, err := serialize.GetSerialize(serialize.SerializeType(endpoint.Serialize)).Marshal(&metadata.Metadata{
 			Data: metaData,
 		})
@@ -106,7 +111,7 @@ func (c *Client) Call(ctx context.Context, methodName string, req, resp interfac
 		}
 
 		if errResp.Code != srpcerr.Ok {
-			return errors.New(errResp.Error())
+			return &errResp
 		}
 
 		if err = serialize.GetSerialize(serialize.SerializeType(endpoint.Serialize)).Unmarshal(errResp.Data, resp); err != nil {
@@ -117,7 +122,7 @@ func (c *Client) Call(ctx context.Context, methodName string, req, resp interfac
 	}
 
 	// 5.执行中间件以及invoker函数
-	return interceptor.ClientIntercept(ctx, req, resp, c.opts.interceptors, invoker)
+	return interceptor.ClientIntercept(ctx, fullMethod, target, req, resp, c.opts.interceptors, invoker)
 }
 
 // extractMessage 提取message内容

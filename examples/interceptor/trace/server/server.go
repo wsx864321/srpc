@@ -6,9 +6,13 @@ import (
 	"github.com/wsx864321/srpc/interceptor"
 	"github.com/wsx864321/srpc/interceptor/serverinterceptor"
 	"github.com/wsx864321/srpc/server"
+	strace "github.com/wsx864321/srpc/trace"
 )
 
 func main() {
+	strace.StartAgent(strace.WithServiceName("helloworld-server"))
+	defer strace.StopAgent()
+
 	s := server.NewServer(
 		server.WithSerialize(serialize.SerializeTypeMsgpack),
 		server.WithDiscovery(
@@ -17,6 +21,6 @@ func main() {
 			),
 		),
 	)
-	s.RegisterService("helloworld", &HelloWorld{}, []interceptor.ServerInterceptor{serverinterceptor.ServerTimeoutInterceptor()}...)
+	s.RegisterService("helloworld", &HelloWorld{}, []interceptor.ServerInterceptor{serverinterceptor.ServerTraceInterceptor()}...)
 	s.Start()
 }
