@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 )
 
 type HelloWorld struct {
@@ -17,7 +18,7 @@ type HelloWorldResp struct {
 }
 
 func (h *HelloWorld) SayHello(ctx context.Context, req *HelloWorldReq) (*HelloWorldResp, error) {
-	//time.Sleep(3 * time.Second)
+	time.Sleep(500 * time.Millisecond)
 	return &HelloWorldResp{
 		Msg: fmt.Sprintf("%s say hello", req.Name),
 	}, nil

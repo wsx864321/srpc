@@ -34,7 +34,7 @@ but，srpc是一个学习RPC框架的“好轮子”（王婆卖瓜自卖自夸�
 ### 数据可观测性（logging、metric、trace）
 - [X] logging
 - [ ] metric
-- [ ] trace
+- [X] trace
 ### 熔断
 - [ ] 熔断
 ### 限流（滑动窗口、漏斗、令牌桶）
