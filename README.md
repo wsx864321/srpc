@@ -58,9 +58,20 @@ but，srpc是一个学习RPC框架的“好轮子”（王婆卖瓜自卖自夸�
 
 ## 客户端
 
+## TODOLIST
+- 实现客户端异步请求方式
+- 实现基于proto的插件来生成客户端和服务端的脚手架
+- 实现Unix Domain Socket的通信方式
+- 实现P2C的负载均衡方式
+- 实现长连接subset子集划分
+- 实现《The Tail at Scale》论文上优化长尾耗时的一些方法？？
+- 优化现有代码风格，增强健壮性
+- .........
+
 ## 使用
 
 ### server
+
 
 server.go
 

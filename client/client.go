@@ -34,7 +34,7 @@ func NewClient(opts ...Option) *Client {
 	return client
 }
 
-func (c *Client) Call(ctx context.Context, methodName string, req, resp interface{}) error {
+func (c *Client) Call(ctx context.Context, methodName string, req, resp interface{}, opts ...CallOption) error {
 	// 1.获取服务地址
 	service, err := c.opts.dis.GetService(ctx, c.opts.serviceName)
 	if err != nil {
