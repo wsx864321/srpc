@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -33,10 +34,7 @@ func client() {
 	}
 
 	//从连接池中取得一个连接
-	v, err := p.Get("tcp", addr)
-
-	//do something
-	//conn=v.(net.Conn)
+	v, err := p.Get(context.Background(), "tcp", addr)
 
 	//将连接放回连接池中
 	p.Put(v)
