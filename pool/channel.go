@@ -47,7 +47,7 @@ func NewChannelPool(opts ...Option) (*channelPool, error) {
 		}
 		conn, err := c.factory(opt.network, opt.address, opt.dailTimeout)
 		if err != nil {
-			c.Release()
+			c.release()
 			return nil, fmt.Errorf("factory is not able to fill the pool: %s", err)
 		}
 		c.conns <- &idleConn{conn: conn, t: time.Now()}
@@ -62,7 +62,7 @@ func (c *channelPool) getConns() chan *idleConn {
 }
 
 // Get 从pool中取一个连接 todo 增加超时控制
-func (c *channelPool) Get(ctx context.Context, network, address string) (net.Conn, error) {
+func (c *channelPool) get(ctx context.Context, network, address string) (net.Conn, error) {
 	conns := c.getConns()
 	if conns == nil {
 		return nil, ErrClosed
@@ -79,14 +79,14 @@ func (c *channelPool) Get(ctx context.Context, network, address string) (net.Con
 			if timeout := c.idleTimeout; timeout > 0 {
 				if wrapConn.t.Add(timeout).Before(time.Now()) {
 					//丢弃并关闭该连接
-					c.Close(wrapConn.conn)
+					c.close(wrapConn.conn)
 					continue
 				}
 			}
 			//判断是否失效，失效则丢弃，如果用户没有设定 ping 方法，就不检查
-			if c.ping != nil {
-				if err := c.Ping(wrapConn.conn); err != nil {
-					c.Close(wrapConn.conn)
+			if c.pingFunc != nil {
+				if err := c.ping(wrapConn.conn); err != nil {
+					c.close(wrapConn.conn)
 					continue
 				}
 			}
@@ -106,14 +106,14 @@ func (c *channelPool) Get(ctx context.Context, network, address string) (net.Con
 						if timeout := c.idleTimeout; timeout > 0 {
 							if wrapConn.t.Add(timeout).Before(time.Now()) {
 								//丢弃并关闭该连接
-								c.Close(wrapConn.conn)
+								c.close(wrapConn.conn)
 								continue
 							}
 						}
 						//判断是否失效，失效则丢弃，如果用户没有设定 ping 方法，就不检查
-						if c.ping != nil {
-							if err := c.Ping(wrapConn.conn); err != nil {
-								c.Close(wrapConn.conn)
+						if c.pingFunc != nil {
+							if err := c.ping(wrapConn.conn); err != nil {
+								c.close(wrapConn.conn)
 								continue
 							}
 						}
@@ -137,13 +137,13 @@ func (c *channelPool) Get(ctx context.Context, network, address string) (net.Con
 }
 
 // Put 将连接放回pool中
-func (c *channelPool) Put(conn net.Conn) error {
+func (c *channelPool) put(conn net.Conn) error {
 	if conn == nil {
 		return errors.New("connection is nil. rejecting")
 	}
 
 	if c.conns == nil {
-		return c.Close(conn)
+		return c.close(conn)
 	}
 
 	select {
@@ -151,18 +151,18 @@ func (c *channelPool) Put(conn net.Conn) error {
 		return nil
 	default:
 		//连接池已满，直接关闭该连接
-		return c.Close(conn)
+		return c.close(conn)
 	}
 
 }
 
 // Close 关闭单条连接
-func (c *channelPool) Close(conn net.Conn) error {
+func (c *channelPool) close(conn net.Conn) error {
 	if conn == nil {
 		return errors.New("connection is nil. rejecting")
 	}
 
-	if c.close == nil {
+	if c.closeFunc == nil {
 		return nil
 	}
 	c.mu.Lock()
@@ -173,22 +173,22 @@ func (c *channelPool) Close(conn net.Conn) error {
 }
 
 // Ping 检查单条连接是否有效
-func (c *channelPool) Ping(conn net.Conn) error {
+func (c *channelPool) ping(conn net.Conn) error {
 	if conn == nil {
 		return errors.New("connection is nil. rejecting")
 	}
-	return c.ping(conn)
+	return c.pingFunc(conn)
 }
 
-// Release 释放连接池中所有连接
-func (c *channelPool) Release() {
+// release 释放连接池中所有连接
+func (c *channelPool) release() {
 	c.mu.Lock()
 	conns := c.conns
 	c.conns = nil
 	c.factory = nil
-	c.ping = nil
+	c.pingFunc = nil
 	closeFun := c.close
-	c.close = nil
+	c.closeFunc = nil
 	c.mu.Unlock()
 
 	if conns == nil {
@@ -203,6 +203,6 @@ func (c *channelPool) Release() {
 }
 
 // Len 连接池中已有的连接
-func (c *channelPool) Len() int {
+func (c *channelPool) len() int {
 	return len(c.getConns())
 }

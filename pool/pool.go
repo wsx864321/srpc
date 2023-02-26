@@ -42,7 +42,7 @@ func NewPool(opts ...Option) *Pool {
 	if opt.factory == nil {
 		panic("invalid factory func settings")
 	}
-	if opt.close == nil {
+	if opt.closeFunc == nil {
 		panic("invalid close func settings")
 	}
 
@@ -57,7 +57,7 @@ func NewPool(opts ...Option) *Pool {
 func (p *Pool) Get(ctx context.Context, network, address string) (net.Conn, error) {
 	if value, ok := p.conns.Load(p.getKey(network, address)); ok {
 		if cp, ok := value.(*channelPool); ok {
-			conn, err := cp.Get(ctx, network, address)
+			conn, err := cp.get(ctx, network, address)
 			return conn, err
 		}
 	}
@@ -67,7 +67,7 @@ func (p *Pool) Get(ctx context.Context, network, address string) (net.Conn, erro
 	defer p.mu.Unlock()
 	if value, ok := p.conns.Load(p.getKey(network, address)); ok {
 		if cp, ok := value.(*channelPool); ok {
-			conn, err := cp.Get(ctx, network, address)
+			conn, err := cp.get(ctx, network, address)
 			return conn, err
 		}
 	}
@@ -76,8 +76,8 @@ func (p *Pool) Get(ctx context.Context, network, address string) (net.Conn, erro
 		WithInitialCap(p.opts.initialCap),
 		WithMaxCap(p.opts.maxCap),
 		WithFactory(p.opts.factory),
-		WithClose(p.opts.close),
-		WithPing(p.opts.ping),
+		WithClose(p.opts.closeFunc),
+		WithPing(p.opts.pingFunc),
 		WithIdleTimeout(p.opts.idleTimeout),
 		WithNetwork(network),
 		WithAddress(address),
@@ -89,13 +89,13 @@ func (p *Pool) Get(ctx context.Context, network, address string) (net.Conn, erro
 
 	p.conns.Store(p.getKey(network, address), cp)
 
-	return cp.Get(ctx, network, address)
+	return cp.get(ctx, network, address)
 }
 
 func (p *Pool) Put(network, address string, conn net.Conn) {
 	if value, ok := p.conns.Load(p.getKey(network, address)); ok {
 		if cp, ok := value.(*channelPool); ok {
-			cp.Put(conn)
+			cp.put(conn)
 		}
 	}
 }
@@ -103,7 +103,7 @@ func (p *Pool) Put(network, address string, conn net.Conn) {
 func (p *Pool) CloseAll() {
 	p.conns.Range(func(key, value interface{}) bool {
 		if cp, ok := value.(*channelPool); ok {
-			cp.Release()
+			cp.release()
 		}
 
 		return true

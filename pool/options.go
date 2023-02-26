@@ -11,10 +11,10 @@ var defaultOptions = &Options{
 	factory: func(network, address string, timeout time.Duration) (net.Conn, error) {
 		return net.DialTimeout(network, address, timeout)
 	},
-	close: func(conn net.Conn) error {
+	closeFunc: func(conn net.Conn) error {
 		return conn.Close()
 	},
-	ping:        nil,
+	pingFunc:    nil,
 	idleTimeout: 1 * time.Minute,
 	network:     "tcp",
 	address:     "127.0.0.1:7777",
@@ -29,9 +29,9 @@ type Options struct {
 	//生成连接的方法
 	factory func(network, address string, timeout time.Duration) (net.Conn, error)
 	//关闭连接的方法
-	close func(conn net.Conn) error
+	closeFunc func(conn net.Conn) error
 	//检查连接是否有效的方法
-	ping func(conn net.Conn) error
+	pingFunc func(conn net.Conn) error
 	//连接最大空闲时间，超过该事件则将失效
 	idleTimeout time.Duration
 	// network eg:tcp udp
@@ -64,13 +64,13 @@ func WithFactory(factory func(network, address string, timeout time.Duration) (n
 
 func WithClose(close func(conn net.Conn) error) Option {
 	return func(opts *Options) {
-		opts.close = close
+		opts.closeFunc = close
 	}
 }
 
 func WithPing(ping func(conn net.Conn) error) Option {
 	return func(opts *Options) {
-		opts.ping = ping
+		opts.pingFunc = ping
 	}
 }
 
