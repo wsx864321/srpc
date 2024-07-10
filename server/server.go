@@ -295,8 +295,10 @@ func (s *server) process(conn net.Conn) error {
 
 	// 3.执行具体方法（包括注册的中间件）
 	if s.opts.timeout > 0 {
+		var cancel context.CancelFunc
 		// 超时控制统一在timeoutInterceptor中间件中执行
-		ctx, _ = context.WithTimeout(ctx, s.opts.timeout)
+		ctx, cancel = context.WithTimeout(ctx, s.opts.timeout)
+		defer cancel()
 	}
 	resp, err := methodHandler(ctx, msg.Payload)
 
